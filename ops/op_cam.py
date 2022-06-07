@@ -67,17 +67,18 @@ class CAMHP_OT_move_view_between_cams(Operator):
         self.r3d.view_location = self.tg_loc
         self.r3d.view_rotation = self.tg_quat
         self.r3d.view_camera_zoom = 0
-        # self.r3d.view_perspective = 'CAMERA'
-        bpy.ops.view3d.view_camera("INVOKE_DEFAULT")
+        self.r3d.view_perspective = 'CAMERA'
+        # bpy.ops.view3d.view_camera("INVOKE_DEFAULT")
 
     def restore(self):
         """ 复位，恢复用户的选择距离和视口位置
 
         :return:
         """
-        self.r3d.view_distance = self.ori_view_distance[0]
-        self.r3d.view_location = self.ori_view_location
-        self.r3d.view_rotation = self.ori_view_rotation
+        self.r3d.view_distance = 6
+        # self.r3d.view_distance = self.ori_view_distance[0]
+        # self.r3d.view_location = self.ori_view_location
+        # self.r3d.view_rotation = self.ori_view_rotation
         bpy.context.scene.camera.data.passepartout_alpha = self.ori_passepartout_alpha
 
     def invoke(self, context, event):
