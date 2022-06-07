@@ -23,10 +23,13 @@ class CAMHP_OT_move_view_between_cams(Operator):
     ori_view_distance = None
     ori_view_location = None
     ori_view_rotation = None
+    ori_view_lens = None
     # 动画控制
     anim_fac = 0  # 动画比例 0~1
     anim_iter = 60  # 动画更新 秒
     anim_time = 0.5  # 持续时间 秒
+    anim_out = 0.4  # 退出动画比例
+
     _timer = None
 
     @classmethod
@@ -49,6 +52,8 @@ class CAMHP_OT_move_view_between_cams(Operator):
 
     def offset_view(self, anim_fac):
         fac = anim_fac
+        cam = bpy.context.scene.camera.data
+
         offset_loc = self.ori_view_location.lerp(self.tg_loc, fac)
         offset_rot = self.ori_view_rotation.slerp(self.tg_quat, fac)
         offset_alpha = self.ori_passepartout_alpha * fac
@@ -56,7 +61,9 @@ class CAMHP_OT_move_view_between_cams(Operator):
         self.r3d.view_location = offset_loc
         self.r3d.view_rotation = offset_rot
 
-        bpy.context.scene.camera.data.passepartout_alpha = offset_alpha
+        bpy.context.space_data.lens = self.ori_view_lens[0] + (
+                    cam.lens - self.ori_view_lens[0]) * fac / self.anim_out  # 加快
+        cam.passepartout_alpha = offset_alpha
 
     def correct_offset(self):
         """ 用于最终位置矫正
@@ -68,6 +75,7 @@ class CAMHP_OT_move_view_between_cams(Operator):
         self.r3d.view_rotation = self.tg_quat
         self.r3d.view_camera_zoom = 0
         self.r3d.view_perspective = 'CAMERA'
+        bpy.context.space_data.lens = bpy.context.scene.camera.data.lens
         # bpy.ops.view3d.view_camera("INVOKE_DEFAULT")
 
     def restore(self):
@@ -79,6 +87,7 @@ class CAMHP_OT_move_view_between_cams(Operator):
         # self.r3d.view_distance = self.ori_view_distance[0]
         # self.r3d.view_location = self.ori_view_location
         # self.r3d.view_rotation = self.ori_view_rotation
+        bpy.context.space_data.lens = self.ori_view_lens[0]
         bpy.context.scene.camera.data.passepartout_alpha = self.ori_passepartout_alpha
 
     def invoke(self, context, event):
@@ -93,6 +102,7 @@ class CAMHP_OT_move_view_between_cams(Operator):
         self.ori_view_distance = (self.r3d.view_distance,)  # 放入元组防止变化
         self.ori_view_location = self.r3d.view_location
         self.ori_view_rotation = self.r3d.view_rotation
+        self.ori_view_lens = (getattr(context.space_data, "lens"),)  # 放入元组防止变化
 
         self.append_handle()
         # 进入一般界面, 设置相机
@@ -106,7 +116,7 @@ class CAMHP_OT_move_view_between_cams(Operator):
         context.region.tag_redraw()
 
         if event.type == 'TIMER':
-            if self.anim_fac >= 0.4:  # 加快进入
+            if self.anim_fac >= self.anim_out:  # 加快进入
                 self.remove_handle()
                 # 强制对齐
                 self.correct_offset()
