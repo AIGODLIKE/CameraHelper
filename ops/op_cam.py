@@ -62,7 +62,7 @@ class CAMHP_OT_move_view_between_cams(Operator):
         self.r3d.view_rotation = offset_rot
 
         bpy.context.space_data.lens = self.ori_view_lens[0] + (
-                    cam.lens - self.ori_view_lens[0]) * fac / self.anim_out  # 加快
+                cam.lens - self.ori_view_lens[0]) * fac / self.anim_out  # 加快
         cam.passepartout_alpha = offset_alpha
 
     def correct_offset(self):
@@ -234,13 +234,28 @@ class Cam():
     def get_local_point(self, point):
         return self.cam.matrix_world.inverted() @ point
 
+def wonk(fac):
+    return 50*(2*sqrt(fac) - sqrt(2))
 
 def draw_lens_callback(self, context):
     font_id = 0
 
+    area = context.area
+    r3d = area.spaces[0].region_3d
+    scale = r3d.view_camera_zoom
+
     region = context.region
+
+    c_x = region.width / 2
+    c_y = region.height / 2
     x = region.width - 160
     y = 80
+
+    # 侧面面板偏移
+    for r in context.area.regions:
+        if r.type == 'UI':
+            x -= r.width
+            break
 
     blf.size(font_id, 20, 120)
     blf.position(font_id, x, y, 0)
