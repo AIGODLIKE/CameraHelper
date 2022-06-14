@@ -101,7 +101,7 @@ class MotionCamListProp(PropertyGroup):
     list_index: IntProperty(name='List Index', default=0, min=0)
 
     active_index: IntProperty(name='Active', default=0, min=0, options={'ANIMATABLE'}, set=set_active, get=get_active)
-    link_selected: BoolProperty(name='Link Active to Selected', default=True, options={'HIDDEN'})
+    link_selected: BoolProperty(name='Sync to Selected', default=True, options={'HIDDEN'})
 
 
 class CAMHP_UL_CameraList(UIList):

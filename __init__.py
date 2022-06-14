@@ -13,17 +13,19 @@ bl_info = {
 
 __ADDON_NAME__ = __name__
 
-from . import ops, gz
+from . import ops, gz, localdb
 
 
 def register():
     ops.register()
     gz.register()
+    localdb.register()
 
 
 def unregister():
     ops.unregister()
     gz.unregister()
+    localdb.unregister()
 
 
 if __name__ == '__main__':
