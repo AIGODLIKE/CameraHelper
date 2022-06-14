@@ -290,6 +290,8 @@ class CAMHP_PT_MotionCamPanel(Panel):
 
         layout.use_property_split = True
         # layout.use_property_decorate = False
+        layout.label(text=context.object.name, icon=context.object.type + '_DATA')
+
         row = layout.row(align=True)
         row.prop(context.object.motion_cam, 'active_index')
         row.prop(context.object.motion_cam, 'link_selected', text='',
@@ -334,6 +336,16 @@ class CAMHP_PT_MotionCamPanel(Panel):
         col.prop(m_cam, 'use_lens')
 
 
+def draw_context(self, context):
+    if context.object and context.object.type in {'CAMERA', 'EMPTY'}:
+        layout = self.layout
+        layout.separator()
+        op = layout.operator('wm.call_panel', text='Motion Camera')
+        op.name = 'CAMHP_PT_MotionCamPanel'
+        op.keep_open = True
+        layout.separator()
+
+
 def register():
     bpy.utils.register_class(MotionCamItemProps)
     bpy.utils.register_class(MotionCamListProp)
@@ -350,6 +362,7 @@ def register():
     # UI
     bpy.utils.register_class(CAMHP_UL_CameraList)
     bpy.utils.register_class(CAMHP_PT_MotionCamPanel)
+    # bpy.types.VIEW3D_MT_object_context_menu.append(draw_context)
 
 
 def unregister():
@@ -368,3 +381,4 @@ def unregister():
     # UI
     bpy.utils.unregister_class(CAMHP_UL_CameraList)
     bpy.utils.unregister_class(CAMHP_PT_MotionCamPanel)
+    # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_context)

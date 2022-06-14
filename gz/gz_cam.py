@@ -85,6 +85,45 @@ class CAMHP_UI_persp_view(UI_Base, GizmoGroup):
         props = gz.target_set_operator("camhp.add_view_cam")
         self.gz_add_cam = gz
 
+    #     self.add_gz_motion_cam(context)
+    #
+    # def refresh(self, context):
+    #     self.set_gz_motion_cam(context)
+    #     context.area.tag_redraw()
+    #
+    # def set_gz_motion_cam(self, context):
+    #     """用于更新gz_lock的图标
+    #
+    #     :param context:
+    #     :return:
+    #     """
+    #     try:
+    #         self.gizmos.remove(self.gz_motion_cam)
+    #     except:
+    #         pass
+    #     finally:
+    #         if context.object.type in {'CAMERA', 'EMPTY'}:
+    #             self.add_gz_motion_cam(context)
+    #
+    # def add_gz_motion_cam(self, context):
+    #     if context.object.type not in {'CAMERA', 'EMPTY'}: return
+    #     gz = self.gizmos.new("GIZMO_GT_button_2d")
+    #     gz.icon = 'ARROW_LEFTRIGHT'
+    #     gz.draw_options = {'BACKDROP', 'OUTLINE'}
+    #     gz.use_tooltip = True
+    #     gz.alpha = .8
+    #     gz.color = 0.08, 0.08, 0.08
+    #     gz.color_highlight = 0.28, 0.28, 0.28
+    #     gz.alpha_highlight = 0.8
+    #
+    #     gz.scale_basis = (80 * 0.35) / 2  # Same as buttons defined in C
+    #
+    #     gz.select = True
+    #     props = gz.target_set_operator("wm.call_panel", )
+    #     props.name = 'CAMHP_PT_MotionCamPanel'
+    #     props.keep_open = False
+    #     self.gz_motion_cam = gz
+
 
 class CAMHP_UI_cam_view(UI_Base, GizmoGroup):
     bl_idname = "CAMHP_UI_cam_view"
@@ -126,6 +165,7 @@ class CAMHP_UI_cam_view(UI_Base, GizmoGroup):
         gz.icon = 'VIEW_PERSPECTIVE'
         gz.draw_options = {'BACKDROP', 'OUTLINE'}
         gz.use_tooltip = True
+        gz.use_draw_modal = True
         gz.alpha = .8
         gz.color = 0.08, 0.08, 0.08
         gz.color_highlight = 0.28, 0.28, 0.28
