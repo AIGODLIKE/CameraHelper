@@ -152,8 +152,16 @@ def gen_cam_path(self, context):
     else:
         const = obj.constraints.new('FOLLOW_PATH')
         const.name = 'Motion Camera'
+
     const.use_fixed_location = True
     const.target = path
+
+    d = const.driver_add('offset_factor')
+    d.driver.type = 'AVERAGE'
+
+    var1 = d.driver.variables.new()
+    var1.targets[0].id = obj
+    var1.targets[0].data_path = 'motion_cam.offset_factor'
 
 
 class MotionCamItemProps(PropertyGroup):
@@ -173,7 +181,7 @@ def set_offset_factor(self, value):
     if 'Motion Camera' not in self.id_data.constraints: return
 
     obj = self.id_data
-    obj.constraints['Motion Camera'].offset_factor = value
+    # obj.constraints['Motion Camera'].offset_factor = value
 
     for i, item in enumerate(obj.motion_cam.list):
         item_next = obj.motion_cam.list[i + 1] if i < len(obj.motion_cam.list) - 1 else None
@@ -181,21 +189,25 @@ def set_offset_factor(self, value):
         fac = item.fac
 
         if item_next:
-            if fac <= value < item_next.fac:
-                from_obj = item.camera
-                to_obj = item_next.camera
+            from_obj = item.camera
+            to_obj = item_next.camera
 
+            if fac <= value < item_next.fac:
                 true_fac = (value - fac) / (item_next.fac - fac)
 
                 interpolate_cam(obj, from_obj, to_obj, true_fac)
+                break
         else:
+            from_obj = item_pre.camera
+            to_obj = item.camera
+
             if item_pre.fac <= value < fac:
-                from_obj = item_pre.camera
-                to_obj = item.camera
-
                 true_fac = (value - item_pre.fac) / (fac - item_pre.fac)
+            else:
+                true_fac = 1
 
-                interpolate_cam(obj, from_obj, to_obj, true_fac)
+            interpolate_cam(obj, from_obj, to_obj, true_fac)
+            break
 
 
 class MotionCamListProp(PropertyGroup):
