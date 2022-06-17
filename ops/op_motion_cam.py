@@ -1,6 +1,7 @@
 import bpy
 from bpy.types import PropertyGroup, Operator, Panel, UIList
 from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntProperty, StringProperty, BoolProperty
+from pathlib import Path
 
 
 def get_active_motion_item(obj):
@@ -9,11 +10,6 @@ def get_active_motion_item(obj):
     :param obj: bpy.types.Object
     :return: bpy.types.Object.motion_cam.list.item / NONE
     """
-    if len(obj.motion_cam.list) > 0:
-        return obj.motion_cam.list[obj.motion_cam.active_index]
-
-
-def get_edit_motion_item(obj):
     if len(obj.motion_cam.list) > 0:
         return obj.motion_cam.list[obj.motion_cam.list_index]
 
@@ -24,84 +20,198 @@ def poll_camera(self, obj):
         return obj.type == 'CAMERA' if self.filter_camera else True
 
 
-def interpolate_cam(self):
-    tg_obj = self.id_data
+def interpolate_cam(tg_obj, from_obj, to_obj, fac):
+    influence = fac
 
-    if self != get_active_motion_item(self.id_data): return
-    if not self.from_obj and self.to_obj: return
+    use_euler = tg_obj.motion_cam.use_euler
+    use_lens = tg_obj.motion_cam.use_lens
 
     # 限定变化
-    if self.use_loc:
-        from_loc = self.from_obj.matrix_world.to_translation().copy()
-        to_loc = self.to_obj.matrix_world.to_translation().copy()
-        tg_loc = from_loc.lerp(to_loc, self.influence)
-        tg_obj.location = tg_loc
-
-    if self.use_euler:
-        from_quart = self.from_obj.matrix_world.to_quaternion().copy()
-        to_quart = self.to_obj.matrix_world.to_quaternion().copy()
-        tg_quart = from_quart.slerp(to_quart, self.influence)
+    if use_euler:
+        from_quart = from_obj.matrix_world.to_quaternion().copy()
+        to_quart = to_obj.matrix_world.to_quaternion().copy()
+        tg_quart = from_quart.slerp(to_quart, influence)
         tg_obj.rotation_euler = tg_quart.to_euler()
 
-    if self.from_obj.type == self.to_obj.type == 'CAMERA' and self.use_lens:
-        tg_lens = (1 - self.influence) * self.from_obj.data.lens + self.influence * self.to_obj.data.lens
+    if from_obj.type == to_obj.type == 'CAMERA' and use_lens:
+        tg_lens = (1 - influence) * from_obj.data.lens + influence * to_obj.data.lens
         tg_obj.data.lens = tg_lens
 
 
-def get_influence(self):
-    return self.get("influence", 0.0)
+def curve_bezier_from_points(coords: list, curve_name, close_spline=False):
+    """
+
+    :param coords: 一系列点的位置
+    :param curve_name: 曲线名
+    :param close_spline: 循环曲线
+    :return:
+    """
+    curve_obj = None
+    if curve_name in bpy.data.objects:
+        curve_obj = bpy.data.objects[curve_name]
+
+    if curve_name in bpy.data.curves:
+        bpy.data.curves.remove(bpy.data.curves[curve_name])
+
+    curve_data = bpy.data.curves.new(curve_name, type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.resolution_u = 12
+
+    # map coords to spline
+    spline = curve_data.splines.new('BEZIER')
+    spline.bezier_points.add(len(coords) - 1)
+
+    for i, coord in enumerate(coords):
+        x, y, z = coord
+        spline.bezier_points[i].handle_right_type = 'AUTO'
+        spline.bezier_points[i].handle_left_type = 'AUTO'
+
+        spline.bezier_points[i].co = (x, y, z)
+        spline.bezier_points[i].handle_left = (x, y, z)
+        spline.bezier_points[i].handle_right = (x, y, z)
+
+    spline.use_cyclic_u = close_spline
+    # 取消端点影响
+    pt_s = spline.bezier_points[0]
+    pt_s.handle_right_type = 'FREE'
+    pt_s.handle_left_type = 'FREE'
+    pt_s.handle_left = pt_s.co
+    pt_s.handle_right = pt_s.co
+
+    pt_s = spline.bezier_points[-1]
+    pt_s.handle_right_type = 'FREE'
+    pt_s.handle_left_type = 'FREE'
+    pt_s.handle_left = pt_s.co
+    pt_s.handle_right = pt_s.co
+
+    # 创建物体
+    if curve_obj:
+        bpy.data.objects.remove(curve_obj)
+
+    curve_obj = bpy.data.objects.new(curve_name, curve_data)
+
+    coll = bpy.context.collection
+    coll.objects.link(curve_obj)
+
+    return curve_obj
 
 
-def set_influence(self, value):
-    self["influence"] = value
-    interpolate_cam(self)
+def get_curve_pt_fac(curve):
+    """
+
+    :param curve: bpy.types.Object
+    :return:
+    """
+
+    # 添加几何节点以获取控制点的fac
+    mod = curve.modifiers.new(type='NODES', name='tmp')
+    if mod.node_group:
+        bpy.data.node_groups.remove(mod.node_group)
+
+    # 导入节点预设
+    f = Path(__file__).parent.joinpath('nodes', 'process.blend')
+    with bpy.data.libraries.load(str(f), link=False) as (data_from, data_to):
+        data_to.node_groups = ['get_fac']
+
+    ng = data_to.node_groups[0]
+    mod.node_group = ng
+    mod["Output_2_attribute_name"] = 'fac'
+    curve.update_tag()
+
+    deg = bpy.context.evaluated_depsgraph_get()
+
+    me = bpy.data.meshes.new_from_object(curve.evaluated_get(deg), depsgraph=deg)
+    res = tuple(pt.value for pt in me.attributes['fac'].data)
+    # clear
+    curve.modifiers.remove(curve.modifiers[0])
+    bpy.data.node_groups.remove(ng)
+    bpy.data.meshes.remove(me)
+
+    return res
 
 
-def update_src(self, context):
-    interpolate_cam(self)
+def gen_cam_path(self, context):
+    obj = self.id_data
+    cam_list = list()
+    for item in obj.motion_cam.list:
+        if item.camera is None: return
+        cam_list.append(item.camera)
+
+    cam_pts = [cam.matrix_world.to_translation() for cam in cam_list]
+    path = curve_bezier_from_points(cam_pts, obj.name + '-MotionPath')
+    pts_fac = get_curve_pt_fac(path)
+
+    for i, fac in enumerate(pts_fac):
+        obj.motion_cam.list[i].fac = fac
+
+    # bind
+    obj.motion_cam.path = path
+    #
+    if 'Motion Camera' in obj.constraints:
+        const = obj.constraints['Motion Camera']
+    else:
+        const = obj.constraints.new('FOLLOW_PATH')
+        const.name = 'Motion Camera'
+    const.use_fixed_location = True
+    const.target = path
 
 
 class MotionCamItemProps(PropertyGroup):
-    name: StringProperty(name='')
     # 只选择相机
     filter_camera: BoolProperty(name='Filter Camera', default=True)
-    # 来源
-    from_obj: PointerProperty(name='From', type=bpy.types.Object, poll=poll_camera, update=update_src)
-    to_obj: PointerProperty(name='To', type=bpy.types.Object, poll=poll_camera, update=update_src)
-    # 动画
-    influence: FloatProperty(name='Influence',
-                             min=0,
-                             max=1,
-                             set=set_influence,
-                             get=get_influence,
-                             options={'ANIMATABLE'}, default=0.5)
-    # 限定
-    use_loc: BoolProperty(name='Location', default=True)
-    use_euler: BoolProperty(name='Rotate', default=True)
-    use_lens: BoolProperty(name='Lens', default=True)
+    camera: PointerProperty(name='Camera', type=bpy.types.Object, poll=poll_camera, update=gen_cam_path)
+    fac: FloatProperty(name='Factor', min=0, max=1)
 
 
-def get_active(self):
-    if self.link_selected:
-        return self.get("list_index", 0)
-    return self.get("active_index", 0)
+def get_offset_factor(self):
+    return self.get('offset_factor', 0.0)
 
 
-def set_active(self, value):
+def set_offset_factor(self, value):
+    self['offset_factor'] = value
+
+    if 'Motion Camera' not in self.id_data.constraints: return
+
     obj = self.id_data
-    if value >= len(obj.motion_cam.list):
-        self["active_index"] = len(obj.motion_cam.list) - 1
-    else:
-        self["active_index"] = value
+    obj.constraints['Motion Camera'].offset_factor = value
+
+    for i, item in enumerate(obj.motion_cam.list):
+        item_next = obj.motion_cam.list[i + 1] if i < len(obj.motion_cam.list) - 1 else None
+        item_pre = obj.motion_cam.list[i - 1] if i > 0 else None
+        fac = item.fac
+
+        if item_next:
+            if fac <= value < item_next.fac:
+                from_obj = item.camera
+                to_obj = item_next.camera
+
+                true_fac = (value - fac) / (item_next.fac - fac)
+
+                interpolate_cam(obj, from_obj, to_obj, true_fac)
+        else:
+            if item_pre.fac <= value < fac:
+                from_obj = item_pre.camera
+                to_obj = item.camera
+
+                true_fac = (value - item_pre.fac) / (fac - item_pre.fac)
+
+                interpolate_cam(obj, from_obj, to_obj, true_fac)
 
 
 class MotionCamListProp(PropertyGroup):
     # 约束列表
     list: CollectionProperty(name='List', type=MotionCamItemProps)
-    list_index: IntProperty(name='List Index', default=0, min=0)
+    list_index: IntProperty(name='List', min=0, default=0)
 
-    active_index: IntProperty(name='Active', default=0, min=0, options={'ANIMATABLE'}, set=set_active, get=get_active)
-    link_selected: BoolProperty(name='Sync to Selected', default=True, options={'HIDDEN'})
+    #
+    path: PointerProperty(type=bpy.types.Object)
+    offset_factor: FloatProperty(name='Offset Factor', min=0, max=1,
+                                 set=set_offset_factor,
+                                 get=get_offset_factor)
+
+    # 限定
+    use_euler: BoolProperty(name='Rotate', default=True)
+    use_lens: BoolProperty(name='Lens', default=True)
 
 
 class CAMHP_UL_CameraList(UIList):
@@ -109,10 +219,8 @@ class CAMHP_UL_CameraList(UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=False)
         row.use_property_decorate = False
-        sub = row.row(align=True)
-        sub.prop(item, 'name', emboss=False)
-        sub = row.row(align=True)
-        sub.prop(item, 'influence', slider=True, text='', emboss=True)
+
+        row.prop(item, 'camera')
 
 
 class ListAction:
@@ -224,37 +332,6 @@ class CAMHP_OT_move_down_motion_cam(ListMove, Operator):
     action = 'DOWN'
 
 
-class CAMHP_OT_init_motion_cam(Operator):
-    """Initialize"""
-    bl_idname = 'camhp.init_motion_cam'
-    bl_label = 'Initialize'
-
-    @classmethod
-    def poll(cls, context):
-        return context.object
-
-    def execute(self, context):
-        context.object.keyframe_insert('delta_scale', frame=0)
-        cam = bpy.context.object
-
-        remain = None
-
-        for fcurve in cam.animation_data.action.fcurves:
-            if fcurve.data_path != 'delta_scale': continue
-
-            fcurve.lock = True
-            fcurve.hide = True
-            fcurve.mute = True
-            if remain is None:
-                remain = fcurve
-            else:
-                cam.animation_data.action.fcurves.remove(fcurve)
-
-        bpy.ops.camhp.add_motion_cam()
-
-        return {'FINISHED'}
-
-
 class CAMHP_PT_MotionCamPanel(Panel):
     bl_label = 'Motion Camera'
     bl_space_type = 'PROPERTIES'
@@ -266,38 +343,14 @@ class CAMHP_PT_MotionCamPanel(Panel):
     def poll(self, context):
         return context.object and context.object.type in {'EMPTY', 'CAMERA'}
 
-    def is_init(self):
-        """ 检查相机是否初始化
-
-        :return:
-        """
-        INIT = False
-
-        cam = bpy.context.object
-        if cam.animation_data is None: return
-        if cam.animation_data.action is None: return
-
-        for fcurve in cam.animation_data.action.fcurves:
-            if fcurve.data_path == 'delta_scale': INIT = True
-
-        return INIT
-
     def draw(self, context):
         layout = self.layout
-        if not self.is_init():
-            layout.operator('CAMHP_OT_init_motion_cam')
-            return
 
         layout.use_property_split = True
         # layout.use_property_decorate = False
         layout.label(text=context.object.name, icon=context.object.type + '_DATA')
 
         row = layout.row(align=True)
-        row.prop(context.object.motion_cam, 'active_index')
-        row.prop(context.object.motion_cam, 'link_selected', text='',
-                 icon='LINKED' if context.object.motion_cam.link_selected else 'UNLINKED')
-
-        row = layout.row(align=1)
 
         col = row.column(align=1)
         col.template_list(
@@ -322,18 +375,15 @@ class CAMHP_PT_MotionCamPanel(Panel):
         c = col_btn.operator('camhp.copy_motion_cam', text='', icon='DUPLICATE')
         c.index = context.object.motion_cam.list_index
 
-        m_cam = get_edit_motion_item(context.object)
+        # m_cam = get_active_motion_item(context.object)
+        #
+        # layout.prop(m_cam, 'camera')
 
-        layout.prop(m_cam, 'from_obj')
-        layout.prop(m_cam, 'influence', slider=True, icon='ARROW_LEFTRIGHT')
-        layout.prop(m_cam, 'to_obj')
+        col.prop(context.object.motion_cam, 'offset_factor', slider=True)
 
-        col = layout.column(align=True)
-        col.use_property_decorate = False
-
-        col.prop(m_cam, 'use_loc')
-        col.prop(m_cam, 'use_euler')
-        col.prop(m_cam, 'use_lens')
+        # col.prop(m_cam, 'use_loc')
+        # col.prop(m_cam, 'use_euler')
+        # col.prop(m_cam, 'use_lens')
 
 
 def draw_context(self, context):
@@ -357,8 +407,6 @@ def register():
     bpy.utils.register_class(CAMHP_OT_move_up_motion_cam)
     bpy.utils.register_class(CAMHP_OT_move_down_motion_cam)
 
-    bpy.utils.register_class(CAMHP_OT_init_motion_cam)
-
     # UI
     bpy.utils.register_class(CAMHP_UL_CameraList)
     bpy.utils.register_class(CAMHP_PT_MotionCamPanel)
@@ -375,8 +423,6 @@ def unregister():
     bpy.utils.unregister_class(CAMHP_OT_copy_motion_cam)
     bpy.utils.unregister_class(CAMHP_OT_move_up_motion_cam)
     bpy.utils.unregister_class(CAMHP_OT_move_down_motion_cam)
-
-    bpy.utils.unregister_class(CAMHP_OT_init_motion_cam)
 
     # UI
     bpy.utils.unregister_class(CAMHP_UL_CameraList)

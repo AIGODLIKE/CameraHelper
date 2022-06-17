@@ -1,7 +1,7 @@
 bl_info = {
-    "name": "Camera Helper",
+    "curve_name": "Camera Helper",
     "author": "幻之境科技 (开发:Atticus)",
-    "blender": (3, 0, 0),
+    "blender": (3, 2, 0),
     "version": (0, 1),
     "category": "Camera",
     "support": "COMMUNITY",

@@ -120,7 +120,7 @@ class CAMHP_UI_persp_view(UI_Base, GizmoGroup):
     #
     #     gz.select = True
     #     props = gz.target_set_operator("wm.call_panel", )
-    #     props.name = 'CAMHP_PT_MotionCamPanel'
+    #     props.curve_name = 'CAMHP_PT_MotionCamPanel'
     #     props.keep_open = False
     #     self.gz_motion_cam = gz
 
