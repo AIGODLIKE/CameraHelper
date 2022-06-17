@@ -4,6 +4,23 @@ from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntPro
 from pathlib import Path
 
 
+def meas_time(func):
+    """计时装饰器
+
+    :param func:
+    :return:
+    """
+
+    def wrapper(*args, **kwargs):
+        import time
+        t = time.time()
+        func(*args, **kwargs)
+        end = time.time()
+        print(func.__name__, f'花费 {(end - t) / 1000}ms')
+
+    return wrapper
+
+
 def get_active_motion_item(obj):
     """
 
@@ -14,13 +31,15 @@ def get_active_motion_item(obj):
         return obj.motion_cam.list[obj.motion_cam.list_index]
 
 
-# 用于过滤用户选项，相机或者普通物体
-def poll_camera(self, obj):
-    if obj != self.id_data:
-        return obj.type == 'CAMERA' if self.filter_camera else True
-
-
 def interpolate_cam(tg_obj, from_obj, to_obj, fac):
+    """用于切换相机的插值
+
+    :param tg_obj:
+    :param from_obj:
+    :param to_obj:
+    :param fac:
+    :return:
+    """
     influence = fac
 
     use_euler = tg_obj.motion_cam.use_euler
@@ -39,25 +58,25 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
 
 
 def curve_bezier_from_points(coords: list, curve_name, close_spline=False):
-    """
+    """穿过点并创建贝塞尔
 
     :param coords: 一系列点的位置
     :param curve_name: 曲线名
     :param close_spline: 循环曲线
     :return:
     """
-    curve_obj = None
+    # 清理
     if curve_name in bpy.data.objects:
-        curve_obj = bpy.data.objects[curve_name]
+        bpy.data.objects.remove(bpy.data.objects[curve_name])
 
     if curve_name in bpy.data.curves:
         bpy.data.curves.remove(bpy.data.curves[curve_name])
 
+    # 创建曲线
     curve_data = bpy.data.curves.new(curve_name, type='CURVE')
     curve_data.dimensions = '3D'
     curve_data.resolution_u = 12
 
-    # map coords to spline
     spline = curve_data.splines.new('BEZIER')
     spline.bezier_points.add(len(coords) - 1)
 
@@ -70,26 +89,22 @@ def curve_bezier_from_points(coords: list, curve_name, close_spline=False):
         spline.bezier_points[i].handle_left = (x, y, z)
         spline.bezier_points[i].handle_right = (x, y, z)
 
+    # 闭合，或为可选项
     spline.use_cyclic_u = close_spline
-    # 取消端点影响
-    pt_s = spline.bezier_points[0]
-    pt_s.handle_right_type = 'FREE'
-    pt_s.handle_left_type = 'FREE'
-    pt_s.handle_left = pt_s.co
-    pt_s.handle_right = pt_s.co
 
-    pt_s = spline.bezier_points[-1]
-    pt_s.handle_right_type = 'FREE'
-    pt_s.handle_left_type = 'FREE'
-    pt_s.handle_left = pt_s.co
-    pt_s.handle_right = pt_s.co
+    # 取消端点影响a
+    def map_handle_to_co(pt):
+        pt.handle_right_type = 'FREE'
+        pt.handle_left_type = 'FREE'
+        pt.handle_left = pt.co
+        pt.handle_right = pt.co
+
+    map_handle_to_co(spline.bezier_points[0])
+    map_handle_to_co(spline.bezier_points[-1])
 
     # 创建物体
-    if curve_obj:
-        bpy.data.objects.remove(curve_obj)
-
     curve_obj = bpy.data.objects.new(curve_name, curve_data)
-
+    # 链接到场景
     coll = bpy.context.collection
     coll.objects.link(curve_obj)
 
@@ -97,10 +112,10 @@ def curve_bezier_from_points(coords: list, curve_name, close_spline=False):
 
 
 def get_curve_pt_fac(curve):
-    """
+    """获取控制点再曲线上的factor
 
     :param curve: bpy.types.Object
-    :return:
+    :return res: tuple[Vector]
     """
 
     # 添加几何节点以获取控制点的fac
@@ -127,48 +142,97 @@ def get_curve_pt_fac(curve):
     bpy.data.node_groups.remove(ng)
     bpy.data.meshes.remove(me)
 
+    for coll in curve.users_collection:
+        coll.objects.unlink(curve)
+
     return res
 
 
+def sample_curve_points(curve):
+    deg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(curve.evaluated_get(deg), depsgraph=deg)
+    points = list()
+
+    for i, v in enumerate(me.vertices):
+        if i == 0 or i == len(me.vertices) - 1:
+            points.append(list(v.co))
+        else:
+            points.append(list(v.co))
+            points.append(list(v.co))
+
+    bpy.data.meshes.remove(me)
+
+    return points
+
+
 def gen_cam_path(self, context):
-    obj = self.id_data
-    cam_list = list()
-    for item in obj.motion_cam.list:
-        if item.camera is None: return
-        cam_list.append(item.camera)
+    """生成相机路径曲线
 
-    cam_pts = [cam.matrix_world.to_translation() for cam in cam_list]
-    path = curve_bezier_from_points(cam_pts, obj.name + '-MotionPath')
-    pts_fac = get_curve_pt_fac(path)
+    :param self:
+    :param context:
+    :return:
+    """
 
-    for i, fac in enumerate(pts_fac):
-        obj.motion_cam.list[i].fac = fac
+    @meas_time
+    def process():
+        obj = self.id_data
+        cam_list = list()
+        for item in obj.motion_cam.list:
+            if item.camera is None: return
+            cam_list.append(item.camera)
 
-    # bind
-    obj.motion_cam.path = path
-    #
-    if 'Motion Camera' in obj.constraints:
-        const = obj.constraints['Motion Camera']
-    else:
+        cam_pts = [cam.matrix_world.to_translation() for cam in cam_list]
+        path = curve_bezier_from_points(cam_pts, obj.name + '-MotionPath')
+        pts_fac = get_curve_pt_fac(path)
+
+        for i, fac in enumerate(pts_fac):
+            obj.motion_cam.list[i].fac = fac
+
+        # bind
+        obj.motion_cam.path = path
+        points = sample_curve_points(path)
+        obj.motion_cam.path_points = '$'.join([f'{co}' for co in points])
+
+        # constraint
+        if 'Motion Camera' in obj.constraints:
+            const = obj.constraints['Motion Camera']
+            obj.constraints.remove(const)
+
         const = obj.constraints.new('FOLLOW_PATH')
         const.name = 'Motion Camera'
 
-    const.use_fixed_location = True
-    const.target = path
+        const.use_fixed_location = True
+        const.target = path
 
-    d = const.driver_add('offset_factor')
-    d.driver.type = 'AVERAGE'
+        d = const.driver_add('offset_factor')
+        d.driver.type = 'AVERAGE'
 
-    var1 = d.driver.variables.new()
-    var1.targets[0].id = obj
-    var1.targets[0].data_path = 'motion_cam.offset_factor'
+        var1 = d.driver.variables.new()
+        var1.targets[0].id = obj
+        var1.targets[0].data_path = 'motion_cam.offset_factor'
+
+        # update for driver
+        path.data.update_tag()
+
+    process()
+
+
+def poll_camera(self, obj):
+    """用于过滤用户选项，相机或者普通物体
+
+    :param self:
+    :param obj:
+    :return:
+    """
+    if obj != self.id_data:
+        return obj.type == 'CAMERA' if self.filter_camera else True
 
 
 class MotionCamItemProps(PropertyGroup):
-    # 只选择相机
     filter_camera: BoolProperty(name='Filter Camera', default=True)
     camera: PointerProperty(name='Camera', type=bpy.types.Object, poll=poll_camera, update=gen_cam_path)
-    fac: FloatProperty(name='Factor', min=0, max=1)
+    # 储存相机偏移值
+    fac: FloatProperty(name='Offset Factor', min=0, max=1)
 
 
 def get_offset_factor(self):
@@ -188,7 +252,7 @@ def set_offset_factor(self, value):
         item_pre = obj.motion_cam.list[i - 1] if i > 0 else None
         fac = item.fac
 
-        if item_next:
+        if item_next:  # 有下一点时，用本点和下一点比较，若value存在当前区间，则在当前相机重进行转换
             from_obj = item.camera
             to_obj = item_next.camera
 
@@ -197,7 +261,7 @@ def set_offset_factor(self, value):
 
                 interpolate_cam(obj, from_obj, to_obj, true_fac)
                 break
-        else:
+        else:  # 不存在下一点时，与上一点进行比较
             from_obj = item_pre.camera
             to_obj = item.camera
 
@@ -215,8 +279,11 @@ class MotionCamListProp(PropertyGroup):
     list: CollectionProperty(name='List', type=MotionCamItemProps)
     list_index: IntProperty(name='List', min=0, default=0)
 
-    #
+    # 路径与偏移
     path: PointerProperty(type=bpy.types.Object)
+    # 用于绘制的点，通过$合并储存
+    path_points: StringProperty()
+    # 偏移 用于混合相机其他参数
     offset_factor: FloatProperty(name='Offset Factor', min=0, max=1,
                                  set=set_offset_factor,
                                  get=get_offset_factor)

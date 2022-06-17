@@ -1,5 +1,5 @@
 import bpy
-from bpy.types import GizmoGroup
+from bpy.types import GizmoGroup, SpaceView3D
 
 
 class UI_Base:
@@ -85,45 +85,6 @@ class CAMHP_UI_persp_view(UI_Base, GizmoGroup):
         props = gz.target_set_operator("camhp.add_view_cam")
         self.gz_add_cam = gz
 
-    #     self.add_gz_motion_cam(context)
-    #
-    # def refresh(self, context):
-    #     self.set_gz_motion_cam(context)
-    #     context.area.tag_redraw()
-    #
-    # def set_gz_motion_cam(self, context):
-    #     """用于更新gz_lock的图标
-    #
-    #     :param context:
-    #     :return:
-    #     """
-    #     try:
-    #         self.gizmos.remove(self.gz_motion_cam)
-    #     except:
-    #         pass
-    #     finally:
-    #         if context.object.type in {'CAMERA', 'EMPTY'}:
-    #             self.add_gz_motion_cam(context)
-    #
-    # def add_gz_motion_cam(self, context):
-    #     if context.object.type not in {'CAMERA', 'EMPTY'}: return
-    #     gz = self.gizmos.new("GIZMO_GT_button_2d")
-    #     gz.icon = 'ARROW_LEFTRIGHT'
-    #     gz.draw_options = {'BACKDROP', 'OUTLINE'}
-    #     gz.use_tooltip = True
-    #     gz.alpha = .8
-    #     gz.color = 0.08, 0.08, 0.08
-    #     gz.color_highlight = 0.28, 0.28, 0.28
-    #     gz.alpha_highlight = 0.8
-    #
-    #     gz.scale_basis = (80 * 0.35) / 2  # Same as buttons defined in C
-    #
-    #     gz.select = True
-    #     props = gz.target_set_operator("wm.call_panel", )
-    #     props.curve_name = 'CAMHP_PT_MotionCamPanel'
-    #     props.keep_open = False
-    #     self.gz_motion_cam = gz
-
 
 class CAMHP_UI_cam_view(UI_Base, GizmoGroup):
     bl_idname = "CAMHP_UI_cam_view"
@@ -193,11 +154,83 @@ class CAMHP_UI_cam_view(UI_Base, GizmoGroup):
         self.add_gz_lock(context)
 
 
+from .draw_utils.bezier import CameraMotionPath
+
+
+class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
+    bl_idname = "CAMHP_UI_draw_motion_curve"
+    bl_label = "Camera Motion Curve"
+
+    _instance = None
+    _draw_handler_instance = None
+    _thumbnail_instance = None
+
+    @classmethod
+    def poll(cls, context):
+        res = cls._poll(context)
+        return res
+
+    @classmethod
+    def _poll(cls, context):
+        ob = context.object
+        view = context.space_data
+
+        if ob and ob.type in {'CAMERA',
+                              'EMPTY'} and view.region_3d.view_perspective != 'CAMERA' and not view.region_quadviews:
+            if not cls._thumbnail_instance:
+                cls._thumbnail_instance = CameraMotionPath(context)
+                cls.start_draw_handler(context)
+            return True
+        else:
+            cls.stop_draw_handler()
+            return False
+
+    @classmethod
+    def stop_draw_handler(cls):
+        if cls._draw_handler_instance:
+            print("GZG::stop_draw_handler")
+            try:
+                SpaceView3D.draw_handler_remove(cls._draw_handler_instance, 'WINDOW')
+            except ValueError:
+                print(
+                    "ERROR: DRAW HANDLER -> ValueError: callback_remove(handler): NULL handler given, invalid or already removed")
+            cls._draw_handler_instance = None
+            cls._thumbnail_instance = None
+            return True
+        return False
+
+    @classmethod
+    def start_draw_handler(cls, context):
+        if cls._draw_handler_instance:
+            # cls.stop_draw_handler()
+            return
+        print("GZG::start_draw_handler")
+        cls._draw_handler_instance = SpaceView3D.draw_handler_add(
+            cls._thumbnail_instance, (context,), 'WINDOW', 'POST_VIEW'
+        )
+
+    def draw_prepare(self, context):
+        thumbnail = self.__class__._thumbnail_instance
+        if not thumbnail:
+            return
+
+    def setup(self, context):
+        self.__class__._instance = self
+        # print("GZG::setup")
+        self.draw_prepare(context)
+
+    def refresh(self, context):
+        # print("GZG::refresh")
+        pass
+
+
 def register():
     bpy.utils.register_class(CAMHP_UI_persp_view)
     bpy.utils.register_class(CAMHP_UI_cam_view)
+    bpy.utils.register_class(CAMHP_UI_draw_motion_curve)
 
 
 def unregister():
     bpy.utils.unregister_class(CAMHP_UI_persp_view)
     bpy.utils.unregister_class(CAMHP_UI_cam_view)
+    bpy.utils.unregister_class(CAMHP_UI_draw_motion_curve)
