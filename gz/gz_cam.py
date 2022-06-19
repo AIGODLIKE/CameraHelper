@@ -154,12 +154,13 @@ class CAMHP_UI_cam_view(UI_Base, GizmoGroup):
         self.add_gz_lock(context)
 
 
-from .draw_utils.bezier import CameraMotionPath
+from .draw_utils.shader import CameraMotionPath
 
 
 class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
     bl_idname = "CAMHP_UI_draw_motion_curve"
     bl_label = "Camera Motion Curve"
+    bl_options = {'3D', 'PERSISTENT'}
 
     _instance = None
     _draw_handler_instance = None
@@ -211,17 +212,46 @@ class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
 
     def draw_prepare(self, context):
         thumbnail = self.__class__._thumbnail_instance
+
         if not thumbnail:
             return
 
     def setup(self, context):
         self.__class__._instance = self
-        # print("GZG::setup")
+        self.add_motion_cam_gz(context)
         self.draw_prepare(context)
+
+    def add_motion_cam_gz(self, context):
+
+        gz = self.gizmos.new("GIZMO_GT_arrow_3d")
+        gz.target_set_prop('offset', context.object.motion_cam, 'offset_factor')
+        gz.matrix_basis = context.object.matrix_world
+        # gz.icon = 'VIEW_PERSPECTIVE'
+        gz.draw_style = 'BOX'
+        gz.use_tooltip = True
+        gz.use_draw_modal = True
+        gz.alpha = .6
+        gz.color = 0.8, 0.0, 0.0
+        gz.color_highlight = 1, 0.0, 0.0
+        gz.alpha_highlight = 0.8
+        self.gz_motion_cam = gz
 
     def refresh(self, context):
         # print("GZG::refresh")
-        pass
+
+        if len(context.object.motion_cam.list) == 0:
+            try:
+                self.gizmos.remove(self.gz_motion_cam)
+            except:
+                pass
+            self.gz_motion_cam = None
+        else:
+            if self.gz_motion_cam is None:
+                self.add_motion_cam_gz(context)
+            if self.gz_motion_cam.is_modal is False:
+                self.gz_motion_cam.matrix_basis = context.object.matrix_world
+
+        context.area.tag_redraw()
 
 
 def register():

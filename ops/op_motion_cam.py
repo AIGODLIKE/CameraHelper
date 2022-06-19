@@ -1,6 +1,7 @@
 import bpy
 from bpy.types import PropertyGroup, Operator, Panel, UIList
-from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntProperty, StringProperty, BoolProperty
+from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntProperty, StringProperty, BoolProperty, \
+    EnumProperty
 from pathlib import Path
 
 
@@ -44,6 +45,8 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
 
     use_euler = tg_obj.motion_cam.use_euler
     use_lens = tg_obj.motion_cam.use_lens
+    use_aperture_fstop = tg_obj.motion_cam.use_aperture_fstop
+    use_focus_distance = tg_obj.motion_cam.use_focus_distance
 
     # 限定变化
     if use_euler:
@@ -52,9 +55,27 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
         tg_quart = from_quart.slerp(to_quart, influence)
         tg_obj.rotation_euler = tg_quart.to_euler()
 
-    if from_obj.type == to_obj.type == 'CAMERA' and use_lens:
-        tg_lens = (1 - influence) * from_obj.data.lens + influence * to_obj.data.lens
-        tg_obj.data.lens = tg_lens
+    if from_obj.type == to_obj.type == 'CAMERA':
+        if use_lens:
+            tg_lens = (1 - influence) * from_obj.data.lens + influence * to_obj.data.lens
+            tg_obj.data.lens = tg_lens
+        if use_aperture_fstop:
+            tg_fstop = (1 - influence) * from_obj.data.dof.aperture_fstop + influence * to_obj.data.dof.aperture_fstop
+            tg_obj.data.dof.aperture_fstop = tg_fstop
+        if use_focus_distance:
+            if tg_obj.data.dof.use_dof:
+
+                def get_focus_dis(cam):
+                    dis = cam.data.dof.focus_distance
+                    obj = cam.data.dof.focus_object
+                    if obj:
+                        get_loc = lambda ob: ob.matrix_world.to_translation()
+                        dis = get_loc(obj).dist(get_loc(cam))
+
+                    return dis
+
+                tg_dis = (1 - influence) * get_focus_dis(from_obj) + influence * get_focus_dis(to_obj)
+                tg_obj.data.dof.focus_distance = tg_dis
 
 
 def curve_bezier_from_points(coords: list, curve_name, close_spline=False):
@@ -240,7 +261,8 @@ def get_offset_factor(self):
 
 
 def set_offset_factor(self, value):
-    self['offset_factor'] = value
+    val = max(min(value, 1), 0)
+    self['offset_factor'] = val
 
     if 'Motion Camera' not in self.id_data.constraints: return
 
@@ -256,8 +278,8 @@ def set_offset_factor(self, value):
             from_obj = item.camera
             to_obj = item_next.camera
 
-            if fac <= value < item_next.fac:
-                true_fac = (value - fac) / (item_next.fac - fac)
+            if fac <= val < item_next.fac:
+                true_fac = (val - fac) / (item_next.fac - fac)
 
                 interpolate_cam(obj, from_obj, to_obj, true_fac)
                 break
@@ -265,8 +287,8 @@ def set_offset_factor(self, value):
             from_obj = item_pre.camera
             to_obj = item.camera
 
-            if item_pre.fac <= value < fac:
-                true_fac = (value - item_pre.fac) / (fac - item_pre.fac)
+            if item_pre.fac <= val < fac:
+                true_fac = (val - item_pre.fac) / (fac - item_pre.fac)
             else:
                 true_fac = 1
 
@@ -275,6 +297,8 @@ def set_offset_factor(self, value):
 
 
 class MotionCamListProp(PropertyGroup):
+    # UI
+    ui: EnumProperty(items=[('CONTROL', 'Set', ''), ('AFFECT', 'Affect', '')], options={'HIDDEN'})
     # 约束列表
     list: CollectionProperty(name='List', type=MotionCamItemProps)
     list_index: IntProperty(name='List', min=0, default=0)
@@ -289,17 +313,18 @@ class MotionCamListProp(PropertyGroup):
                                  get=get_offset_factor)
 
     # 限定
-    use_euler: BoolProperty(name='Rotate', default=True)
-    use_lens: BoolProperty(name='Lens', default=True)
+    use_euler: BoolProperty(name='Rotate', default=True, options={'HIDDEN'})
+    use_lens: BoolProperty(name='Focal Length', default=True, options={'HIDDEN'})
+    use_focus_distance: BoolProperty(name='Focus Distance', default=True, options={'HIDDEN'})
+    use_aperture_fstop: BoolProperty(name='F-Stop', default=True, options={'HIDDEN'})
 
 
 class CAMHP_UL_CameraList(UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
-        row = layout.row(align=False)
-        row.use_property_decorate = False
-
-        row.prop(item, 'camera')
+        row = layout.row(align=True)
+        row.label(text='', icon='CAMERA_DATA')
+        layout.prop(item, 'camera', text='', emboss=True)
 
 
 class ListAction:
@@ -425,13 +450,26 @@ class CAMHP_PT_MotionCamPanel(Panel):
     def draw(self, context):
         layout = self.layout
 
-        layout.use_property_split = True
         # layout.use_property_decorate = False
+        row = layout.row(align=True)
+        row.prop(context.object.motion_cam, 'ui', expand=True)
+
+        if context.object.motion_cam.ui == 'CONTROL':
+            self.draw_control(context, layout)
+        else:
+            self.draw_setttings(context, layout)
+
+    def draw_control(self, context, layout):
         layout.label(text=context.object.name, icon=context.object.type + '_DATA')
 
-        row = layout.row(align=True)
+        layout.prop(context.object.motion_cam, 'offset_factor', slider=True)
 
-        col = row.column(align=1)
+        layout.label(text='Source')
+        box = layout.box()
+        row = box.row(align=True)
+
+        col = row.column(align=0)
+
         col.template_list(
             "CAMHP_UL_CameraList", "The list",
             context.object.motion_cam, "list",
@@ -454,15 +492,19 @@ class CAMHP_PT_MotionCamPanel(Panel):
         c = col_btn.operator('camhp.copy_motion_cam', text='', icon='DUPLICATE')
         c.index = context.object.motion_cam.list_index
 
-        # m_cam = get_active_motion_item(context.object)
-        #
-        # layout.prop(m_cam, 'camera')
+    def draw_setttings(self, context, layout):
+        col = layout.column()
+        col.use_property_split = True
 
-        col.prop(context.object.motion_cam, 'offset_factor', slider=True)
+        col.prop(context.object.motion_cam, 'use_euler')
+        col.prop(context.object.motion_cam, 'use_lens')
 
-        # col.prop(m_cam, 'use_loc')
-        # col.prop(m_cam, 'use_euler')
-        # col.prop(m_cam, 'use_lens')
+        col.separator()
+
+        box = col.box().column(align=True)
+        box.label(text='Depth of Field')
+        box.prop(context.object.motion_cam, 'use_focus_distance')
+        box.prop(context.object.motion_cam, 'use_aperture_fstop')
 
 
 def draw_context(self, context):
