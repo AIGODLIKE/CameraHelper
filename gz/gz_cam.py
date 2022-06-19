@@ -264,8 +264,8 @@ class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
 
     def refresh(self, context):
         # print("GZG::refresh")
-
-        if len(context.object.motion_cam.list) == 0:
+        cam_list =  [item.camera for item in context.object.motion_cam.list]
+        if len(context.object.motion_cam.list) == 0 or None in cam_list:
             if self.gz_motion_cam:
                 self.gizmos.remove(self.gz_motion_cam)
                 self.gz_motion_cam = None

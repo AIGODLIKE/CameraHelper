@@ -27,6 +27,7 @@ class CameraMotionPath():
         self.draw_callback_bezier_3d(context)
 
     def draw_callback_bezier_3d(self, context):
+        if context.object is None: return
         self.motion_path = context.object.motion_cam.path
         if self.motion_path is None: return
 
