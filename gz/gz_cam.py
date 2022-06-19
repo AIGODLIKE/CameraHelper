@@ -155,6 +155,7 @@ class CAMHP_UI_cam_view(UI_Base, GizmoGroup):
 
 
 from .draw_utils.shader import CameraMotionPath
+from .gz_custom import CAMHP_GT_custom_move_3d
 
 
 class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
@@ -165,6 +166,10 @@ class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
     _instance = None
     _draw_handler_instance = None
     _thumbnail_instance = None
+
+    _move_gz = dict()
+    _rotate_gz = dict()
+    _bind_set_get = dict()
 
     @classmethod
     def poll(cls, context):
@@ -218,6 +223,7 @@ class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
 
     def setup(self, context):
         self.__class__._instance = self
+
         self.add_motion_cam_gz(context)
         self.draw_prepare(context)
 
@@ -226,7 +232,6 @@ class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
         gz = self.gizmos.new("GIZMO_GT_arrow_3d")
         gz.target_set_prop('offset', context.object.motion_cam, 'offset_factor')
         gz.matrix_basis = context.object.matrix_world
-        # gz.icon = 'VIEW_PERSPECTIVE'
         gz.draw_style = 'BOX'
         gz.use_tooltip = True
         gz.use_draw_modal = True
@@ -236,20 +241,48 @@ class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
         gz.alpha_highlight = 0.8
         self.gz_motion_cam = gz
 
+        indexs = iter(range(len(context.object.motion_cam.list)))
+
+        for index, item in enumerate(context.object.motion_cam.list):
+            item = context.object.motion_cam.list[index]
+
+            gz = self.gizmos.new("CAMHP_GT_custom_move_3d")
+            gz._index = index
+
+            gz.target_set_prop('offset', item.camera, 'location')
+            # print(gz.target_get_value('offset'))
+            # gz.matrix_basis = item.camera.matrix_world
+            gz.use_tooltip = True
+            gz.use_draw_modal = True
+            gz.alpha = .6
+            gz.color = 0.0, 0.6, 0.8
+            gz.color_highlight = 0.0, 0.8, 1.0
+            gz.alpha_highlight = 0.8
+            gz.scale_basis = 0.2
+
+            self._move_gz[gz] = item.camera
+
     def refresh(self, context):
         # print("GZG::refresh")
 
         if len(context.object.motion_cam.list) == 0:
-            try:
+            if self.gz_motion_cam:
                 self.gizmos.remove(self.gz_motion_cam)
-            except:
-                pass
-            self.gz_motion_cam = None
+                self.gz_motion_cam = None
+
+                for gz in self._move_gz.keys():
+                    self.gizmos.remove(gz)
+                self._move_gz.clear()
         else:
             if self.gz_motion_cam is None:
                 self.add_motion_cam_gz(context)
+
             if self.gz_motion_cam.is_modal is False:
                 self.gz_motion_cam.matrix_basis = context.object.matrix_world
+
+            for gz, camera in self._rotate_gz.items():
+                if gz.is_modal is False and camera:
+                    gz.matrix_basis = camera.matrix_world.normalized()
 
         context.area.tag_redraw()
 
@@ -257,10 +290,12 @@ class CAMHP_UI_draw_motion_curve(UI_Base, GizmoGroup):
 def register():
     bpy.utils.register_class(CAMHP_UI_persp_view)
     bpy.utils.register_class(CAMHP_UI_cam_view)
+    bpy.utils.register_class(CAMHP_GT_custom_move_3d)
     bpy.utils.register_class(CAMHP_UI_draw_motion_curve)
 
 
 def unregister():
     bpy.utils.unregister_class(CAMHP_UI_persp_view)
     bpy.utils.unregister_class(CAMHP_UI_cam_view)
+    bpy.utils.unregister_class(CAMHP_GT_custom_move_3d)
     bpy.utils.unregister_class(CAMHP_UI_draw_motion_curve)

@@ -10,6 +10,7 @@ from bpy_extras.view3d_utils import location_3d_to_region_2d
 from gpu_extras.batch import batch_for_shader
 from .bl_ui_slider import BL_UI_Slider
 from .bl_ui_drag_panel import BL_UI_Drag_Panel
+from .bezier import sample_spline_split, beziers_from_spline
 
 shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
 
@@ -28,19 +29,36 @@ class CameraMotionPath():
     def draw_callback_bezier_3d(self, context):
         self.motion_path = context.object.motion_cam.path
         if self.motion_path is None: return
-        if context.object.motion_cam.path_points == '': return
+
+        spline = self.motion_path.data.splines[0]
+        bezier = beziers_from_spline(spline, self.motion_path.matrix_world)
+
+        # 采样点
+        points = list()
+        for i, p in enumerate(spline.bezier_points):
+            if i == 0: continue
+            pts = sample_spline_split(bezier[i - 1], samples=12)
+            points += pts
+
+        # 从点绘制连续线条
+        draw_points = list()
+        for i, p in enumerate(points):
+            if i == 0 or i == len(points) - 1:
+                draw_points.append(p)
+            else:
+                draw_points.append(p)
+                draw_points.append(p)
+
+        # if context.object.motion_cam.path_points == '': return
 
         bgl.glEnable(bgl.GL_BLEND)
         bgl.glEnable(bgl.GL_LINE_SMOOTH)
         bgl.glEnable(bgl.GL_DEPTH_TEST)
 
-        points = context.object.motion_cam.path_points.split('$')
-        pts = [ast.literal_eval(p) for p in points]
-
         bgl.glLineWidth(3)
         shader.bind()
         shader.uniform_float("color", (0.8, 0, 0, 0.5))
-        batch = batch_for_shader(shader, 'LINES', {"pos": pts})
+        batch = batch_for_shader(shader, 'LINES', {"pos": draw_points})
         batch.draw(shader)
 
         # restore opengl defaults

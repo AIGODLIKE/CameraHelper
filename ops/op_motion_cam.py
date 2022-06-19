@@ -69,7 +69,7 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
                     dis = cam.data.dof.focus_distance
                     obj = cam.data.dof.focus_object
                     if obj:
-                        get_loc = lambda ob: ob.matrix_world.to_translation()
+                        get_loc = lambda ob: ob.matrix_world.translation
                         dis = get_loc(obj).dist(get_loc(cam))
 
                     return dis
@@ -194,18 +194,33 @@ def gen_cam_path(self, context):
     :return:
     """
 
-    @meas_time
     def process():
         obj = self.id_data
         cam_list = list()
         for item in obj.motion_cam.list:
-            if item.camera is None: return
             cam_list.append(item.camera)
 
-        cam_pts = [cam.matrix_world.to_translation() for cam in cam_list]
+        cam_pts = [cam.matrix_world.translation for cam in cam_list]
         path = curve_bezier_from_points(cam_pts, obj.name + '-MotionPath')
-        pts_fac = get_curve_pt_fac(path)
+        path.modifiers.clear()
 
+        # # hook
+        # for i, cam in enumerate(cam_list):
+        #     print(cam.name)
+        #     hm = path.modifiers.new(
+        #         name=f"Hook_{i}",
+        #         type='HOOK',
+        #     )
+        #     if i == 0:  # bug,使用强制更新
+        #         hm = path.modifiers.new(
+        #             name=f"Hook_{i}",
+        #             type='HOOK',
+        #         )
+        #
+        #     hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])
+        #     hm.object = cam
+
+        pts_fac = get_curve_pt_fac(path)
         for i, fac in enumerate(pts_fac):
             obj.motion_cam.list[i].fac = fac
 
@@ -264,8 +279,8 @@ def set_offset_factor(self, value):
     val = max(min(value, 1), 0)
     self['offset_factor'] = val
 
-    if 'Motion Camera' not in self.id_data.constraints: return
-
+    if 'Motion Camera' not in self.id_data.constraints:
+        return
     obj = self.id_data
     # obj.constraints['Motion Camera'].offset_factor = value
 
@@ -299,6 +314,7 @@ def set_offset_factor(self, value):
 class MotionCamListProp(PropertyGroup):
     # UI
     ui: EnumProperty(items=[('CONTROL', 'Set', ''), ('AFFECT', 'Affect', '')], options={'HIDDEN'})
+    update: BoolProperty(update=gen_cam_path)
     # 约束列表
     list: CollectionProperty(name='List', type=MotionCamItemProps)
     list_index: IntProperty(name='List', min=0, default=0)
@@ -436,6 +452,84 @@ class CAMHP_OT_move_down_motion_cam(ListMove, Operator):
     action = 'DOWN'
 
 
+from mathutils import Vector
+from ..gz.draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
+from ..gz.draw_utils.bl_ui_button import BL_UI_Button
+
+from bpy_extras.view3d_utils import location_3d_to_region_2d
+
+
+def get_obj_2d_loc(obj, context):
+    r3d = context.space_data.region_3d
+
+    x, y = location_3d_to_region_2d(context.region, r3d, obj.matrix_world.translation)
+    return x, y
+
+
+class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
+    bl_idname = 'camhp.add_motion_cams'
+    bl_label = 'Add Motion Camera'
+
+    buttons = list()
+    cam = None
+
+    def __init__(self):
+        super().__init__()
+        self.buttons.clear()
+
+        for obj in bpy.context.view_layer.objects:
+            if obj.type != 'CAMERA': continue
+
+            x, y = get_obj_2d_loc(obj, bpy.context)
+
+            btn = BL_UI_Button(x, y, 120, 30)
+            btn.bg_color = (0.1, 0.1, 0.1, 0.8)
+            btn.hover_bg_color = (0.6, 0.6, 0.6, 0.8)
+            btn.text = obj.name
+            # button1.set_image("//img/scale_24.png")
+            # self.button1.set_image_size((24,24))
+            # button1.set_image_position((4, 2))
+            btn.set_mouse_down(self.add_motion_cam, obj)
+            setattr(btn, 'bind_obj', obj.name)
+
+            self.buttons.append(btn)
+
+    def on_invoke(self, context, event):
+        self.init_widgets(context, self.buttons)
+
+        # 创建相机
+        cam_data = bpy.data.cameras.new(name='Camera')
+        cam = bpy.data.objects.new('Camera', cam_data)
+        context.collection.objects.link(cam)
+        # 设置
+        cam.data.show_name = True
+        cam.name = 'Motion Camera'
+        self.cam = cam
+
+    def add_motion_cam(self, obj):
+        item = self.cam.motion_cam.list.add()
+        item.camera = obj
+        self.cam.motion_cam.offset_factor = 0.3
+        self.cam.update_tag()
+
+        bpy.context.view_layer.objects.active = self.cam
+        bpy.context.area.tag_redraw()
+
+    def modal(self, context, event):
+
+        for i, btn in enumerate(self.buttons):
+            if hasattr(btn, 'bind_obj'):
+                obj_name = getattr(btn, 'bind_obj')
+                obj = bpy.data.objects.get(obj_name)
+
+                if obj:
+                    x, y = get_obj_2d_loc(obj, context)
+                    btn.update(x, y)
+                    context.area.tag_redraw()
+
+        return super().modal(context, event)
+
+
 class CAMHP_PT_MotionCamPanel(Panel):
     bl_label = 'Motion Camera'
     bl_space_type = 'PROPERTIES'
@@ -517,6 +611,11 @@ def draw_context(self, context):
         layout.separator()
 
 
+def draw_add_context(self, context):
+    if context.mode == 'OBJECT':
+        self.layout.operator('camhp.add_motion_cams')
+
+
 def register():
     bpy.utils.register_class(MotionCamItemProps)
     bpy.utils.register_class(MotionCamListProp)
@@ -531,7 +630,11 @@ def register():
     # UI
     bpy.utils.register_class(CAMHP_UL_CameraList)
     bpy.utils.register_class(CAMHP_PT_MotionCamPanel)
+
+    bpy.utils.register_class(CAMHP_PT_add_motion_cams)
+
     # bpy.types.VIEW3D_MT_object_context_menu.append(draw_context)
+    bpy.types.VIEW3D_MT_camera_add.append(draw_add_context)
 
 
 def unregister():
@@ -548,4 +651,6 @@ def unregister():
     # UI
     bpy.utils.unregister_class(CAMHP_UL_CameraList)
     bpy.utils.unregister_class(CAMHP_PT_MotionCamPanel)
+
+    bpy.utils.unregister_class(CAMHP_PT_add_motion_cams)
     # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_context)
