@@ -4,22 +4,11 @@ from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntPro
     EnumProperty
 from pathlib import Path
 
+from .utils import meas_time, get_mesh_obj_attrs
+from .utils import gen_bezier_curve_from_points, gen_sample_attr_obj, gen_sample_mesh_obj
 
-def meas_time(func):
-    """计时装饰器
-
-    :param func:
-    :return:
-    """
-
-    def wrapper(*args, **kwargs):
-        import time
-        t = time.time()
-        func(*args, **kwargs)
-        end = time.time()
-        print(func.__name__, f'花费 {(end - t) / 1000}ms')
-
-    return wrapper
+C_ATTR_FAC = 'factor'
+C_ATTR_LENGTH = 'length'
 
 
 def get_active_motion_item(obj):
@@ -32,6 +21,37 @@ def get_active_motion_item(obj):
         return obj.motion_cam.list[obj.motion_cam.list_index]
 
 
+def mix_value(val1, val2, fac):
+    return (1 - fac) * val1 + fac * val2
+
+
+def get_interpolate_euler(from_obj, to_obj, fac):
+    from_quart = from_obj.matrix_world.to_quaternion().copy()
+    to_quart = to_obj.matrix_world.to_quaternion().copy()
+    return from_quart.slerp(to_quart, fac).to_euler()
+
+
+def get_interpolate_lens(from_obj, to_obj, fac):
+    return mix_value(from_obj.data.lens, to_obj.data.lens, fac)
+
+
+def get_interpolate_fstop(from_obj, to_obj, fac):
+    return mix_value(from_obj.data.dof.aperture_fstop, to_obj.data.dof.aperture_fstop, fac)
+
+
+def get_interpolate_focal(from_obj, to_obj, fac):
+    def get_focus_dis(cam):
+        dis = cam.data.dof.focus_distance
+        obj = cam.data.dof.focus_object
+        if obj:
+            get_loc = lambda ob: ob.matrix_world.translation
+            dis = get_loc(obj).dist(get_loc(cam))
+
+        return dis
+
+    return mix_value(get_focus_dis(from_obj), get_focus_dis(to_obj), fac)
+
+
 def interpolate_cam(tg_obj, from_obj, to_obj, fac):
     """用于切换相机的插值
 
@@ -41,149 +61,22 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
     :param fac:
     :return:
     """
-    influence = fac
-
     use_euler = tg_obj.motion_cam.use_euler
     use_lens = tg_obj.motion_cam.use_lens
     use_aperture_fstop = tg_obj.motion_cam.use_aperture_fstop
     use_focus_distance = tg_obj.motion_cam.use_focus_distance
 
-    # 限定变化
+    # 限定变化, 位置变化由曲线约束
     if use_euler:
-        from_quart = from_obj.matrix_world.to_quaternion().copy()
-        to_quart = to_obj.matrix_world.to_quaternion().copy()
-        tg_quart = from_quart.slerp(to_quart, influence)
-        tg_obj.rotation_euler = tg_quart.to_euler()
+        tg_obj.rotation_euler = get_interpolate_euler(from_obj, to_obj, fac)
 
     if from_obj.type == to_obj.type == 'CAMERA':
         if use_lens:
-            tg_lens = (1 - influence) * from_obj.data.lens + influence * to_obj.data.lens
-            tg_obj.data.lens = tg_lens
+            tg_obj.data.lens = get_interpolate_lens(from_obj, to_obj, fac)
         if use_aperture_fstop:
-            tg_fstop = (1 - influence) * from_obj.data.dof.aperture_fstop + influence * to_obj.data.dof.aperture_fstop
-            tg_obj.data.dof.aperture_fstop = tg_fstop
-        if use_focus_distance:
-            if tg_obj.data.dof.use_dof:
-
-                def get_focus_dis(cam):
-                    dis = cam.data.dof.focus_distance
-                    obj = cam.data.dof.focus_object
-                    if obj:
-                        get_loc = lambda ob: ob.matrix_world.translation
-                        dis = get_loc(obj).dist(get_loc(cam))
-
-                    return dis
-
-                tg_dis = (1 - influence) * get_focus_dis(from_obj) + influence * get_focus_dis(to_obj)
-                tg_obj.data.dof.focus_distance = tg_dis
-
-
-def curve_bezier_from_points(coords: list, curve_name, close_spline=False):
-    """穿过点并创建贝塞尔
-
-    :param coords: 一系列点的位置
-    :param curve_name: 曲线名
-    :param close_spline: 循环曲线
-    :return:
-    """
-    # 清理
-    if curve_name in bpy.data.objects:
-        bpy.data.objects.remove(bpy.data.objects[curve_name])
-
-    if curve_name in bpy.data.curves:
-        bpy.data.curves.remove(bpy.data.curves[curve_name])
-
-    # 创建曲线
-    curve_data = bpy.data.curves.new(curve_name, type='CURVE')
-    curve_data.dimensions = '3D'
-    curve_data.resolution_u = 12
-
-    spline = curve_data.splines.new('BEZIER')
-    spline.bezier_points.add(len(coords) - 1)
-
-    for i, coord in enumerate(coords):
-        x, y, z = coord
-        spline.bezier_points[i].handle_right_type = 'AUTO'
-        spline.bezier_points[i].handle_left_type = 'AUTO'
-
-        spline.bezier_points[i].co = (x, y, z)
-        spline.bezier_points[i].handle_left = (x, y, z)
-        spline.bezier_points[i].handle_right = (x, y, z)
-
-    # 闭合，或为可选项
-    spline.use_cyclic_u = close_spline
-
-    # 取消端点影响a
-    def map_handle_to_co(pt):
-        pt.handle_right_type = 'FREE'
-        pt.handle_left_type = 'FREE'
-        pt.handle_left = pt.co
-        pt.handle_right = pt.co
-
-    map_handle_to_co(spline.bezier_points[0])
-    map_handle_to_co(spline.bezier_points[-1])
-
-    # 创建物体
-    curve_obj = bpy.data.objects.new(curve_name, curve_data)
-    # 链接到场景
-    coll = bpy.context.collection
-    coll.objects.link(curve_obj)
-
-    return curve_obj
-
-
-def get_curve_pt_fac(curve):
-    """获取控制点再曲线上的factor
-
-    :param curve: bpy.types.Object
-    :return res: tuple[Vector]
-    """
-
-    # 添加几何节点以获取控制点的fac
-    mod = curve.modifiers.new(type='NODES', name='tmp')
-    if mod.node_group:
-        bpy.data.node_groups.remove(mod.node_group)
-
-    # 导入节点预设
-    f = Path(__file__).parent.joinpath('nodes', 'process.blend')
-    with bpy.data.libraries.load(str(f), link=False) as (data_from, data_to):
-        data_to.node_groups = ['get_fac']
-
-    ng = data_to.node_groups[0]
-    mod.node_group = ng
-    mod["Output_2_attribute_name"] = 'fac'
-    curve.update_tag()
-
-    deg = bpy.context.evaluated_depsgraph_get()
-
-    me = bpy.data.meshes.new_from_object(curve.evaluated_get(deg), depsgraph=deg)
-    res = tuple(pt.value for pt in me.attributes['fac'].data)
-    # clear
-    curve.modifiers.remove(curve.modifiers[0])
-    bpy.data.node_groups.remove(ng)
-    bpy.data.meshes.remove(me)
-
-    for coll in curve.users_collection:
-        coll.objects.unlink(curve)
-
-    return res
-
-
-def sample_curve_points(curve):
-    deg = bpy.context.evaluated_depsgraph_get()
-    me = bpy.data.meshes.new_from_object(curve.evaluated_get(deg), depsgraph=deg)
-    points = list()
-
-    for i, v in enumerate(me.vertices):
-        if i == 0 or i == len(me.vertices) - 1:
-            points.append(list(v.co))
-        else:
-            points.append(list(v.co))
-            points.append(list(v.co))
-
-    bpy.data.meshes.remove(me)
-
-    return points
+            tg_obj.data.dof.aperture_fstop = get_interpolate_fstop(from_obj, to_obj, fac)
+        if use_focus_distance and tg_obj.data.dof.use_dof:
+            tg_obj.data.dof.focus_distance = get_interpolate_focal(from_obj, to_obj, fac)
 
 
 def gen_cam_path(self, context):
@@ -194,6 +87,7 @@ def gen_cam_path(self, context):
     :return:
     """
 
+    @meas_time
     def process():
         obj = self.id_data
         cam_list = list()
@@ -201,35 +95,35 @@ def gen_cam_path(self, context):
             cam_list.append(item.camera)
 
         cam_pts = [cam.matrix_world.translation for cam in cam_list]
-        path = curve_bezier_from_points(cam_pts, obj.name + '-MotionPath')
+        path = gen_bezier_curve_from_points(coords=cam_pts,
+                                            curve_name=obj.name + '-MotionPath',
+                                            resolution_u=12)
+
+        # hook
         path.modifiers.clear()
+        for i, cam in enumerate(cam_list):
+            print(cam.name)
+            hm = path.modifiers.new(
+                name=f"Hook_{i}",
+                type='HOOK',
+            )
+            if i == 0:  # bug,使用强制更新
+                hm = path.modifiers.new(
+                    name=f"Hook_{i}",
+                    type='HOOK',
+                )
 
-        # # hook
-        # for i, cam in enumerate(cam_list):
-        #     print(cam.name)
-        #     hm = path.modifiers.new(
-        #         name=f"Hook_{i}",
-        #         type='HOOK',
-        #     )
-        #     if i == 0:  # bug,使用强制更新
-        #         hm = path.modifiers.new(
-        #             name=f"Hook_{i}",
-        #             type='HOOK',
-        #         )
-        #
-        #     hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])
-        #     hm.object = cam
+            hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])
+            hm.object = cam
 
-        pts_fac = get_curve_pt_fac(path)
-        for i, fac in enumerate(pts_fac):
-            obj.motion_cam.list[i].fac = fac
-
-        # bind
+        path_attr = gen_sample_attr_obj(path)
+        path_mesh = gen_sample_mesh_obj(path)
+        # 设置
         obj.motion_cam.path = path
-        points = sample_curve_points(path)
-        obj.motion_cam.path_points = '$'.join([f'{co}' for co in points])
+        obj.motion_cam.path_attr = path_attr
+        obj.motion_cam.path_mesh = path_mesh
 
-        # constraint
+        # 约束
         if 'Motion Camera' in obj.constraints:
             const = obj.constraints['Motion Camera']
             obj.constraints.remove(const)
@@ -250,26 +144,16 @@ def gen_cam_path(self, context):
         # update for driver
         path.data.update_tag()
 
+        # hide
+        coll = bpy.context.collection
+        coll.objects.unlink(path)
+        coll.objects.unlink(path_attr)
+        coll.objects.unlink(path_mesh)
+
     process()
 
 
-def poll_camera(self, obj):
-    """用于过滤用户选项，相机或者普通物体
-
-    :param self:
-    :param obj:
-    :return:
-    """
-    if obj != self.id_data:
-        return obj.type == 'CAMERA' if self.filter_camera else True
-
-
-class MotionCamItemProps(PropertyGroup):
-    filter_camera: BoolProperty(name='Filter Camera', default=True)
-    camera: PointerProperty(name='Camera', type=bpy.types.Object, poll=poll_camera, update=gen_cam_path)
-    # 储存相机偏移值
-    fac: FloatProperty(name='Offset Factor', min=0, max=1)
-
+# 偏移factor的get/set-------------------------------------------------------------------
 
 def get_offset_factor(self):
     return self.get('offset_factor', 0.0)
@@ -279,31 +163,49 @@ def set_offset_factor(self, value):
     val = max(min(value, 1), 0)
     self['offset_factor'] = val
 
-    if 'Motion Camera' not in self.id_data.constraints:
-        return
     obj = self.id_data
     # obj.constraints['Motion Camera'].offset_factor = value
+
+    if 'Motion Camera' not in self.id_data.constraints:
+        return
+    path = obj.motion_cam.path
+    path_attr = obj.motion_cam.path_attr
+    path_mesh = obj.motion_cam.path_mesh
+
+    if path is None or path_attr is None or path_mesh is None:
+        return
+
+    attr_values_dict = get_mesh_obj_attrs(bpy.context, path_attr)
+    attr_fac = attr_values_dict.get(C_ATTR_FAC)
+    attr_length = attr_values_dict.get(C_ATTR_LENGTH)
+
+    if not attr_fac or not attr_length: return
 
     for i, item in enumerate(obj.motion_cam.list):
         item_next = obj.motion_cam.list[i + 1] if i < len(obj.motion_cam.list) - 1 else None
         item_pre = obj.motion_cam.list[i - 1] if i > 0 else None
-        fac = item.fac
+
+        fac = attr_fac[i]
 
         if item_next:  # 有下一点时，用本点和下一点比较，若value存在当前区间，则在当前相机重进行转换
             from_obj = item.camera
             to_obj = item_next.camera
+            next_fac = attr_fac[i + 1]
 
-            if fac <= val < item_next.fac:
-                true_fac = (val - fac) / (item_next.fac - fac)
+            if fac <= val < next_fac:
+                true_fac = (val - fac) / (next_fac - fac)
 
                 interpolate_cam(obj, from_obj, to_obj, true_fac)
                 break
         else:  # 不存在下一点时，与上一点进行比较
+            if item_pre is None: continue
+
             from_obj = item_pre.camera
             to_obj = item.camera
+            pre_fac = attr_fac[i - 1]
 
-            if item_pre.fac <= val < fac:
-                true_fac = (val - item_pre.fac) / (fac - item_pre.fac)
+            if pre_fac <= val < fac:
+                true_fac = (val - pre_fac) / (fac - pre_fac)
             else:
                 true_fac = 1
 
@@ -311,18 +213,29 @@ def set_offset_factor(self, value):
             break
 
 
+#  --------------------------------------------------------------------------------
+
+# Properties --------------------------------------------------------------
+###############################################################################
+
+class MotionCamItemProps(PropertyGroup):
+    camera: PointerProperty(name='Camera', type=bpy.types.Object,
+                            poll=lambda self, obj: obj.type == 'CAMERA' and obj != self,
+                            update=gen_cam_path)
+
+
 class MotionCamListProp(PropertyGroup):
     # UI
     ui: EnumProperty(items=[('CONTROL', 'Set', ''), ('AFFECT', 'Affect', '')], options={'HIDDEN'})
-    update: BoolProperty(update=gen_cam_path)
-    # 约束列表
+    # 相机列表
     list: CollectionProperty(name='List', type=MotionCamItemProps)
-    list_index: IntProperty(name='List', min=0, default=0)
+    list_index: IntProperty(name='List', min=0, default=0, update=gen_cam_path)
 
-    # 路径与偏移
+    # 路径
     path: PointerProperty(type=bpy.types.Object)
-    # 用于绘制的点，通过$合并储存
-    path_points: StringProperty()
+    path_attr: PointerProperty(type=bpy.types.Object)  # 用于实时采样属性
+    path_mesh: PointerProperty(type=bpy.types.Object)  # 用于实时采样位置，绘制
+
     # 偏移 用于混合相机其他参数
     offset_factor: FloatProperty(name='Offset Factor', min=0, max=1,
                                  set=set_offset_factor,
@@ -334,6 +247,12 @@ class MotionCamListProp(PropertyGroup):
     use_focus_distance: BoolProperty(name='Focus Distance', default=True, options={'HIDDEN'})
     use_aperture_fstop: BoolProperty(name='F-Stop', default=True, options={'HIDDEN'})
 
+
+###############################################################################
+
+
+# List/Operators ---------------------------------------------------------------
+###############################################################################
 
 class CAMHP_UL_CameraList(UIList):
 
@@ -452,6 +371,9 @@ class CAMHP_OT_move_down_motion_cam(ListMove, Operator):
     action = 'DOWN'
 
 
+# Operator for the list of cameras -------------------------------------------
+###############################################################################
+
 from mathutils import Vector
 from ..gz.draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
 from ..gz.draw_utils.bl_ui_button import BL_UI_Button
@@ -509,10 +431,11 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
     def add_motion_cam(self, obj):
         item = self.cam.motion_cam.list.add()
         item.camera = obj
-        self.cam.motion_cam.offset_factor = 0.3
+        self.cam.motion_cam.offset_factor = 0.5
         self.cam.update_tag()
 
         bpy.context.view_layer.objects.active = self.cam
+        self.cam.select_set(True)
         bpy.context.area.tag_redraw()
 
     def modal(self, context, event):
@@ -529,6 +452,12 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
 
         return super().modal(context, event)
 
+
+###############################################################################
+
+
+# UI -------------------------------------------
+###############################################################################
 
 class CAMHP_PT_MotionCamPanel(Panel):
     bl_label = 'Motion Camera'
@@ -616,6 +545,8 @@ def draw_add_context(self, context):
         self.layout.operator('camhp.add_motion_cams')
 
 
+###############################################################################
+
 def register():
     bpy.utils.register_class(MotionCamItemProps)
     bpy.utils.register_class(MotionCamListProp)
@@ -654,3 +585,4 @@ def unregister():
 
     bpy.utils.unregister_class(CAMHP_PT_add_motion_cams)
     # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_context)
+    bpy.types.VIEW3D_MT_camera_add.remove(draw_add_context)

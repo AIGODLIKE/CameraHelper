@@ -1,9 +1,9 @@
-from . import gz_cam
+from . import gzg
 
 
 def register():
-    gz_cam.register()
+    gzg.register()
 
 
 def unregister():
-    gz_cam.unregister()
+    gzg.unregister()

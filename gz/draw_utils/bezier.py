@@ -1,5 +1,5 @@
 import numpy as np
-
+from mathutils.geometry import interpolate_bezier
 
 class CubicBezier(object):
     def __init__(self, points):
@@ -41,6 +41,7 @@ def beziers_from_spline(spline, mat):
 
 
 def sample_spline_split(spline_beziers, samples=12):
+    """对曲线点进行采样，返回采样点"""
     pts = []
     i = 0
     while i < 1:

@@ -11,6 +11,7 @@ from gpu_extras.batch import batch_for_shader
 from .bl_ui_slider import BL_UI_Slider
 from .bl_ui_drag_panel import BL_UI_Drag_Panel
 from .bezier import sample_spline_split, beziers_from_spline
+from ...ops.utils import get_mesh_obj_coords
 
 shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
 
@@ -28,19 +29,18 @@ class CameraMotionPath():
 
     def draw_callback_bezier_3d(self, context):
         if context.object is None: return
-        self.motion_path = context.object.motion_cam.path
-        if self.motion_path is None: return
 
-        spline = self.motion_path.data.splines[0]
-        bezier = beziers_from_spline(spline, self.motion_path.matrix_world)
+        path = context.object.motion_cam.path
+        path_attr = context.object.motion_cam.path_attr
+        path_mesh = context.object.motion_cam.path_mesh
 
-        # 采样点
-        points = list()
-        for i, p in enumerate(spline.bezier_points):
-            if i == 0: continue
-            pts = sample_spline_split(bezier[i - 1], samples=12)
-            points += pts
+        if path is None or path_attr is None or path_mesh is None:
+            return
 
+        points = get_mesh_obj_coords(context, path_mesh)
+        # print(points)
+        if len(points) == 0:
+            return
         # 从点绘制连续线条
         draw_points = list()
         for i, p in enumerate(points):

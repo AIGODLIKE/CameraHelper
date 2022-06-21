@@ -7,6 +7,8 @@ from bpy.props import EnumProperty, StringProperty
 from mathutils import Vector
 from math import tan, radians, sqrt
 
+from .utils import Cam
+
 
 class CAMHP_OT_move_view_between_cams(Operator):
     bl_idname = 'camhp.move_view_between_cams'
@@ -209,33 +211,6 @@ class CAMHP_OT_lock_cam(Operator):
         setattr(context.space_data, "lock_camera", not getattr(context.space_data, "lock_camera"))
         return {'FINISHED'}
 
-
-class Cam():
-    def __init__(self, cam):
-        self.cam = cam
-        self.startLocation = cam.location.copy()
-        self.startAngle = cam.data.angle
-
-    def restore(self):
-        self.cam.location = self.startLocation.copy()
-        self.cam.data.angle = self.startAngle
-
-    def limit_angle_range(self, value):
-        max_view_radian = 3.0  # 172d
-        min_view_radian = 0.007  # 0.367d
-        self.cam.data.angle = max(min(self.cam.data.angle + value, max_view_radian), min_view_radian)
-
-    def get_angle(self):
-        return self.cam.data.angle
-
-    def offsetLocation(self, localCorrectionVector):
-        self.cam.location = self.cam.location + (localCorrectionVector @ self.cam.matrix_world.inverted())
-
-    def get_local_point(self, point):
-        return self.cam.matrix_world.inverted() @ point
-
-def wonk(fac):
-    return 50*(2*sqrt(fac) - sqrt(2))
 
 def draw_lens_callback(self, context):
     font_id = 0
