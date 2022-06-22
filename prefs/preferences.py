@@ -11,7 +11,7 @@ class GizmoMotionCamera(PropertyGroup):
                                default=(0.8, 0.0, 0.0, 0.6))
     color_highlight: FloatVectorProperty(name='Active Highlight', subtype='COLOR_GAMMA', size=4,
                                          default=(1, 0.0, 0.0, 0.8))
-    scale_basis: FloatProperty(name='Scale', default=0.3, min=0.1)
+    scale_basis: FloatProperty(name='Scale', default=0.75, min=0.1)
     use_draw_modal: BoolProperty(name='Draw Modal', default=True)
 
 
@@ -20,7 +20,7 @@ class GizmoMotionSource(PropertyGroup):
                                default=(0.0, 0.6, 0.8, 0.6))
     color_highlight: FloatVectorProperty(name='Active Highlight', subtype='COLOR_GAMMA', size=4,
                                          default=(0.0, 0.8, 1.0, 0.8))
-    scale_basis: FloatProperty(name='Scale', default=0.2, min=0.05)
+    scale_basis: FloatProperty(name='Scale', default=0.5, min=0.05)
     use_draw_modal: BoolProperty(name='Draw Modal', default=True)
 
 

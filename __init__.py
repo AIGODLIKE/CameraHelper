@@ -3,7 +3,7 @@ bl_info = {
     "author": "幻之境科技 (开发:Atticus)",
     "blender": (3, 2, 0),
     "version": (0, 1),
-    "category": "Camera",
+    "category": "幻之境",
     "support": "COMMUNITY",
     "doc_url": "",
     "tracker_url": "",

@@ -1,5 +1,5 @@
 import bpy
-from bpy.types import GizmoGroup, SpaceView3D,PropertyGroup
+from bpy.types import GizmoGroup, SpaceView3D, PropertyGroup
 from .gz_custom import GizmoInfo_2D
 
 
@@ -154,12 +154,14 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
 
 
 from .draw_utils.shader import CameraMotionPath
-from .gz_custom import CAMHP_GT_custom_move_3d, CAMHP_GT_custom_move_1d,CAMHP_OT_insert_keyframe
+from .gz_custom import CAMHP_GT_custom_move_3d, CAMHP_GT_custom_move_1d, CAMHP_OT_insert_keyframe
 from ..prefs.get_pref import get_pref
+
 
 class TargetProperties(PropertyGroup):
     """A target is a property of an object that is meant to be driven by a widget"""
     pass
+
 
 class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
     bl_idname = "CAMHP_UI_draw_motion_curve"
@@ -252,6 +254,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.alpha_highlight = pref_gz.color_highlight[3]
             gz.use_draw_modal = pref_gz.use_draw_modal
             gz.scale_basis = pref_gz.scale_basis
+            gz.use_draw_scale = False
 
             self.gz_motion_cam = gz
 
@@ -283,6 +286,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.alpha_highlight = pref_gz.color_highlight[3]
             gz.use_draw_modal = pref_gz.use_draw_modal
             gz.scale_basis = pref_gz.scale_basis
+            gz.use_draw_scale = False
 
             self._move_gz[gz] = item.camera
 
