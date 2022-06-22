@@ -12,6 +12,7 @@ from .bl_ui_slider import BL_UI_Slider
 from .bl_ui_drag_panel import BL_UI_Drag_Panel
 from .bezier import sample_spline_split, beziers_from_spline
 from ...ops.utils import get_mesh_obj_coords
+from ...prefs.get_pref import get_pref
 
 shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
 
@@ -56,9 +57,9 @@ class CameraMotionPath():
         bgl.glEnable(bgl.GL_LINE_SMOOTH)
         bgl.glEnable(bgl.GL_DEPTH_TEST)
 
-        bgl.glLineWidth(3)
+        bgl.glLineWidth(get_pref().draw_motion_curve.width)
         shader.bind()
-        shader.uniform_float("color", (0.8, 0, 0, 0.5))
+        shader.uniform_float("color", get_pref().draw_motion_curve.color)
         batch = batch_for_shader(shader, 'LINES', {"pos": draw_points})
         batch.draw(shader)
 

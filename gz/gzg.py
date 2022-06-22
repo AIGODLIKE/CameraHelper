@@ -1,5 +1,5 @@
 import bpy
-from bpy.types import GizmoGroup, SpaceView3D
+from bpy.types import GizmoGroup, SpaceView3D,PropertyGroup
 from .gz_custom import GizmoInfo_2D
 
 
@@ -154,8 +154,12 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
 
 
 from .draw_utils.shader import CameraMotionPath
-from .gz_custom import CAMHP_GT_custom_move_3d, CAMHP_GT_custom_move_1d
+from .gz_custom import CAMHP_GT_custom_move_3d, CAMHP_GT_custom_move_1d,CAMHP_OT_insert_keyframe
+from ..prefs.get_pref import get_pref
 
+class TargetProperties(PropertyGroup):
+    """A target is a property of an object that is meant to be driven by a widget"""
+    pass
 
 class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
     bl_idname = "CAMHP_UI_draw_motion_curve"
@@ -236,16 +240,18 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.target_set_prop('offset', context.object.motion_cam, 'offset_factor')
 
             gz._camera = context.object
-
-            gz.alpha = .6
-            gz.color = 0.8, 0.0, 0.0
-            gz.color_highlight = 1, 0.0, 0.0
-            gz.alpha_highlight = 0.8
             gz.use_tooltip = True
-            gz.use_draw_modal = True
             gz.use_event_handle_all = True
 
-            gz.scale_basis = 0.3
+            # 设置gizmo的偏好
+            pref_gz = get_pref().gz_motion_camera
+
+            gz.alpha = pref_gz.color[3]
+            gz.color = pref_gz.color[:3]
+            gz.color_highlight = pref_gz.color_highlight[:3]
+            gz.alpha_highlight = pref_gz.color_highlight[3]
+            gz.use_draw_modal = pref_gz.use_draw_modal
+            gz.scale_basis = pref_gz.scale_basis
 
             self.gz_motion_cam = gz
 
@@ -262,16 +268,21 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz._camera = item.camera
 
             gz.target_set_prop('offset', item.camera, 'location')
-
-            gz.alpha = .6
-            gz.color = 0.0, 0.6, 0.8
-            gz.color_highlight = 0.0, 0.8, 1.0
-            gz.alpha_highlight = 0.8
-            gz.scale_basis = 0.2
-
+            # gz.target_set_handler(
+            #     "offset",
+            #     get=props.get_value,
+            #     set=props.set_value,
+            # )
             gz.use_tooltip = True
-            gz.use_draw_modal = True
             gz.use_event_handle_all = True
+
+            pref_gz = get_pref().gz_motion_source
+            gz.alpha = pref_gz.color[3]
+            gz.color = pref_gz.color[:3]
+            gz.color_highlight = pref_gz.color_highlight[:3]
+            gz.alpha_highlight = pref_gz.color_highlight[3]
+            gz.use_draw_modal = pref_gz.use_draw_modal
+            gz.scale_basis = pref_gz.scale_basis
 
             self._move_gz[gz] = item.camera
 
@@ -294,16 +305,21 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
                     self.gizmos.remove(gz)
 
                 self._move_gz.clear()
+
         elif self.gz_motion_cam is None or update_gz:
             self.add_motion_cam_gz(context)
 
         # 矫正位置
-        self.gz_motion_cam.matrix_basis = context.object.matrix_world.normalized()
-        self.gz_motion_cam.scale_basis = 0.3
-        #
-        # for gz in self._move_gz.keys():
-        #     gz.matrix_basis = gz._camera.matrix_world.normalized()
-        #     gz.matrix_basis.translation = -gz.target_get_value('offset')
+        if self.gz_motion_cam:
+            self.gz_motion_cam.matrix_basis = context.object.matrix_world.normalized()
+            # self.gz_motion_cam.matrix_basis.col[3][0] -= -self.gz_motion_cam.target_get_value('offset')
+            # self.gz_motion_cam.scale_basis = 0.3
+
+        for gz in self._move_gz.keys():
+            # gz.matrix_basis = gz._camera.matrix_world.normalized()
+            # gz.matrix_basis.translation = -gz.target_get_value('offset')
+            # gz.scale_basis = 0.2
+            pass
 
         context.area.tag_redraw()
 
@@ -311,6 +327,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
 def register():
     bpy.utils.register_class(CAMHP_UI_persp_view)
     bpy.utils.register_class(CAMHP_UI_cam_view)
+    bpy.utils.register_class(CAMHP_OT_insert_keyframe)
     bpy.utils.register_class(CAMHP_GT_custom_move_1d)
     bpy.utils.register_class(CAMHP_GT_custom_move_3d)
     bpy.utils.register_class(CAMHP_UI_draw_motion_curve)
@@ -319,6 +336,7 @@ def register():
 def unregister():
     bpy.utils.unregister_class(CAMHP_UI_persp_view)
     bpy.utils.unregister_class(CAMHP_UI_cam_view)
+    bpy.utils.unregister_class(CAMHP_OT_insert_keyframe)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_1d)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_3d)
     bpy.utils.unregister_class(CAMHP_UI_draw_motion_curve)

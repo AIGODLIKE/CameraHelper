@@ -238,6 +238,7 @@ class MotionCamListProp(PropertyGroup):
 
     # 偏移 用于混合相机其他参数
     offset_factor: FloatProperty(name='Offset Factor', min=0, max=1,
+                                 description='Offset Factor',
                                  set=set_offset_factor,
                                  get=get_offset_factor)
 
@@ -486,6 +487,9 @@ class CAMHP_PT_MotionCamPanel(Panel):
         layout.label(text=context.object.name, icon=context.object.type + '_DATA')
 
         layout.prop(context.object.motion_cam, 'offset_factor', slider=True)
+        # 视口k帧
+        if context.area.type == 'VIEW_3D':
+            layout.operator('camhp.insert_keyframe')
 
         layout.label(text='Source')
         box = layout.box()
@@ -541,8 +545,10 @@ def draw_context(self, context):
 
 
 def draw_add_context(self, context):
-    if context.mode == 'OBJECT':
-        self.layout.operator('camhp.add_motion_cams')
+    if context.object.type == "CAMERA":
+        layout = self.layout
+        layout.operator_context = 'INVOKE_DEFAULT'
+        layout.operator('camhp.add_motion_cams')
 
 
 ###############################################################################
@@ -565,7 +571,7 @@ def register():
     bpy.utils.register_class(CAMHP_PT_add_motion_cams)
 
     # bpy.types.VIEW3D_MT_object_context_menu.append(draw_context)
-    bpy.types.VIEW3D_MT_camera_add.append(draw_add_context)
+    bpy.types.VIEW3D_MT_object_context_menu.append(draw_add_context)
 
 
 def unregister():
@@ -585,4 +591,4 @@ def unregister():
 
     bpy.utils.unregister_class(CAMHP_PT_add_motion_cams)
     # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_context)
-    bpy.types.VIEW3D_MT_camera_add.remove(draw_add_context)
+    bpy.types.VIEW3D_MT_object_context_menu.remove(draw_add_context)

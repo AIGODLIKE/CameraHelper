@@ -118,6 +118,20 @@ class GizmoBase(Gizmo):
         return {'RUNNING_MODAL'}
 
 
+class CAMHP_OT_insert_keyframe(bpy.types.Operator):
+    bl_idname = 'camhp.insert_keyframe'
+    bl_label = 'Insert Keyframe'
+
+    def execute(self, context):
+        context.object.motion_cam.keyframe_insert('offset_factor')
+
+        for area in context.window.screen.areas:
+            for region in area.regions:
+                region.tag_redraw()
+
+        return {'FINISHED'}
+
+
 class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
     bl_idname = "CAMHP_GT_custom_move_1d"
     # The id must be "offset"
@@ -175,8 +189,9 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
                 layout.popover(panel='CAMHP_PT_MotionCamPanel')
 
             context.window_manager.popup_menu(pop_up, title=f'{self._camera.name}', icon='CAMERA_DATA')
-
+            # bpy.ops.wm.call_panel(name='CAMHP_PT_MotionCamPanel', keep_open=True)
             return {'INTERFACE'}
+
         return super().invoke(context, event)
 
 
