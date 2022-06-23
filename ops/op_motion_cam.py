@@ -99,7 +99,7 @@ def gen_cam_path(self, context):
                                             curve_name=obj.name + '-MotionPath',
                                             resolution_u=12)
 
-        # hook
+        # 生成hook修改器(用于接受动画曲线的输入)
         path.modifiers.clear()
         for i, cam in enumerate(cam_list):
             print(cam.name)
@@ -113,9 +113,9 @@ def gen_cam_path(self, context):
                     type='HOOK',
                 )
 
-            hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])
+            hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])  # 跳过手柄点
             hm.object = cam
-
+        # 生成用于采样/绘制的网格数据
         path_attr = gen_sample_attr_obj(path)
         path_mesh = gen_sample_mesh_obj(path)
         # 设置
@@ -168,6 +168,11 @@ def set_offset_factor(self, value):
 
     if 'Motion Camera' not in self.id_data.constraints:
         return
+
+    # 防止移动帧时的无限触发更新
+    if bpy.context.active_operator == getattr(getattr(bpy.ops, 'transform'), 'transform'):
+        return
+
     path = obj.motion_cam.path
     path_attr = obj.motion_cam.path_attr
     path_mesh = obj.motion_cam.path_mesh
