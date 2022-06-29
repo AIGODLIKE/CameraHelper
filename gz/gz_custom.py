@@ -29,7 +29,7 @@ class GizmoInfo_2D():
         self.scale_basis = scale_basis
 
 
-def create_geo_shape(obj=None, type='TRIS'):
+def create_geo_shape(obj=None, type='TRIS', scale=1):
     """ 创建一个几何形状，默认创造球体
 
     :param obj:
@@ -40,7 +40,7 @@ def create_geo_shape(obj=None, type='TRIS'):
     else:
         tmp_mesh = bpy.data.meshes.new('tmp')
         bm = bmesh.new()
-        bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=0.25, calc_uvs=True)
+        bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=scale / 5, calc_uvs=True)
         bm.to_mesh(tmp_mesh)
         bm.free()
 
@@ -143,7 +143,9 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
 
     def setup(self):
         if not hasattr(self, "custom_shape"):
-            self.custom_shape = self.new_custom_shape('TRIS', create_geo_shape())
+            pref_gz = get_pref().gz_motion_camera
+
+            self.custom_shape = self.new_custom_shape('TRIS', create_geo_shape(scale=pref_gz.scale_basis))
 
     def _update_offset_matrix(self):
         # offset behind the light
@@ -216,7 +218,8 @@ class CAMHP_GT_custom_move_3d(GizmoBase, Gizmo):
 
     def setup(self):
         if not hasattr(self, "custom_shape"):
-            self.custom_shape = self.new_custom_shape('TRIS', create_geo_shape())
+            pref_gz = get_pref().gz_motion_source
+            self.custom_shape = self.new_custom_shape('TRIS', create_geo_shape(scale=pref_gz.scale_basis))
 
     def _projected_value(self, context, event):
         """用于光线投射

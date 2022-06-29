@@ -268,7 +268,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.color = pref_gz.color[:3]
             gz.color_highlight = pref_gz.color_highlight[:3]
             gz.alpha_highlight = pref_gz.color_highlight[3]
-            gz.scale_basis = pref_gz.scale_basis
+            # gz.scale_basis = pref_gz.scale_basis
             gz.use_draw_modal = True
             gz.use_draw_scale = False
 
@@ -300,7 +300,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.color = pref_gz.color[:3]
             gz.color_highlight = pref_gz.color_highlight[:3]
             gz.alpha_highlight = pref_gz.color_highlight[3]
-            gz.scale_basis = pref_gz.scale_basis
+            # gz.scale_basis = pref_gz.scale_basis
             gz.use_draw_modal = True
             gz.use_draw_scale = False
 
@@ -332,7 +332,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
         # 矫正位置
         if self.gz_motion_cam:
             self.gz_motion_cam.matrix_basis = context.object.matrix_world.normalized()
-            # self.gz_motion_cam.matrix_basis.col[3][0] -= -self.gz_motion_cam.target_get_value('offset')
+            self.gz_motion_cam.matrix_basis.col[3][2] += 0.5
             # self.gz_motion_cam.scale_basis = 0.3
 
         for gz in self._move_gz.keys():

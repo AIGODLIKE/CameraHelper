@@ -83,8 +83,8 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
 def gen_cam_path(self, context):
     """生成相机路径曲线
 
-    :param self:
-    :param context:
+    :param self:`
+    :param contexnt: m
     :return:
     """
 
@@ -104,7 +104,7 @@ def gen_cam_path(self, context):
         # 生成hook修改器(用于接受动画曲线的输入)
         path.modifiers.clear()
         for i, cam in enumerate(cam_list):
-            print(cam.name)
+            # print(cam.name)
             hm = path.modifiers.new(
                 name=f"Hook_{i}",
                 type='HOOK',
@@ -114,8 +114,10 @@ def gen_cam_path(self, context):
                     name=f"Hook_{i}",
                     type='HOOK',
                 )
-
-            hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])  # 跳过手柄点
+            if obj.motion_cam.path_type == 'SMOOTH':
+                hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])  # 跳过手柄点
+            else:
+                hm.vertex_indices_set([i])
             hm.object = cam
 
         # 生成用于采样/绘制的网格数据
