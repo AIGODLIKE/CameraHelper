@@ -43,7 +43,7 @@ def draw_shadow():
     # draw shadow
     shader = get_builtin_shader('2D_UNIFORM_COLOR')
     shader.bind()
-    shader.uniform_float('color', (0.5, 0.5, 0.5, 0.5))
+    shader.uniform_float('color', (1, 1, 1, 0.5))
 
     position = Vector((
         0 - WIDTH - PADDING,

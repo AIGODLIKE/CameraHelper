@@ -7,6 +7,8 @@ import bmesh
 import numpy as np
 import bpy
 
+from ..prefs.get_pref import get_pref
+
 
 class GizmoInfo_2D():
     def __init__(self, name, type, icon,
@@ -170,10 +172,13 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
             delta /= 10.0
 
         value = self.init_value - delta / 1000
-        if value > 1:
-            value = abs(1 - value)
-        elif value < 0:
-            value = abs(value + 1)
+
+        if get_pref().gz_motion_camera.loop:
+            if value > 1:
+                value = abs(1 - value)
+            elif value < 0:
+                value = abs(value + 1)
+        # 反向控制
         if event.ctrl:
             value = 1 - value
 

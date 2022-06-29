@@ -121,6 +121,7 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
         self.gz_lock = gz
 
     def setup(self, context):
+        # 调整焦距控件
         gz = self.gizmos.new("GIZMO_GT_button_2d")
         gz.icon = 'VIEW_PERSPECTIVE'
         gz.draw_options = {'BACKDROP', 'OUTLINE'}
@@ -135,7 +136,7 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
 
         props = gz.target_set_operator("camhp.adjust_cam_lens")
         self.gz_move = gz
-
+        # 切换相机控件
         gz = self.gizmos.new("GIZMO_GT_button_2d")
         gz.icon = 'CAMERA_DATA'
         gz.draw_options = {'BACKDROP', 'OUTLINE'}
@@ -149,6 +150,21 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
 
         props = gz.target_set_operator("camhp.switch_cam")
         self.gz_switch = gz
+
+        # 相机设置
+        gz = self.gizmos.new("GIZMO_GT_button_2d")
+        gz.icon = 'PROPERTIES'
+        gz.draw_options = {'BACKDROP', 'OUTLINE'}
+        gz.use_tooltip = True
+        gz.alpha = .8
+        gz.color = 0.08, 0.08, 0.08
+        gz.color_highlight = 0.28, 0.28, 0.28
+        gz.alpha_highlight = 0.8
+
+        gz.scale_basis = (80 * 0.35) / 2  # Same as buttons defined in C
+
+        props = gz.target_set_operator("camhp.popup_cam_settings")
+        self.gz_setttings = gz
 
         self.add_gz_lock(context)
 
@@ -184,7 +200,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
     def _poll(cls, context):
         ob = context.object
         view = context.space_data
-
+        # 检测是否选中摄像机
         if ob and ob.type in {'CAMERA',
                               'EMPTY'} and view.region_3d.view_perspective != 'CAMERA' and not view.region_quadviews:
             if not cls._thumbnail_instance:
@@ -198,7 +214,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
     @classmethod
     def stop_draw_handler(cls):
         if cls._draw_handler_instance:
-            print("GZG::stop_draw_handler")
+            print("CamHp::stop_draw_handler")
             try:
                 SpaceView3D.draw_handler_remove(cls._draw_handler_instance, 'WINDOW')
             except ValueError:
@@ -214,7 +230,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
         if cls._draw_handler_instance:
             # cls.stop_draw_handler()
             return
-        print("GZG::start_draw_handler")
+        print("CamHp::start_draw_handler")
         cls._draw_handler_instance = SpaceView3D.draw_handler_add(
             cls._thumbnail_instance, (context,), 'WINDOW', 'POST_VIEW'
         )
@@ -252,8 +268,8 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.color = pref_gz.color[:3]
             gz.color_highlight = pref_gz.color_highlight[:3]
             gz.alpha_highlight = pref_gz.color_highlight[3]
-            gz.use_draw_modal = pref_gz.use_draw_modal
             gz.scale_basis = pref_gz.scale_basis
+            gz.use_draw_modal = True
             gz.use_draw_scale = False
 
             self.gz_motion_cam = gz
@@ -284,14 +300,14 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.color = pref_gz.color[:3]
             gz.color_highlight = pref_gz.color_highlight[:3]
             gz.alpha_highlight = pref_gz.color_highlight[3]
-            gz.use_draw_modal = pref_gz.use_draw_modal
             gz.scale_basis = pref_gz.scale_basis
+            gz.use_draw_modal = True
             gz.use_draw_scale = False
 
             self._move_gz[gz] = item.camera
 
     def refresh(self, context):
-        # print("GZG::refresh")
+        # print("CamHp::refresh")
         update_gz = False
         # 添加相机时候自动添加gizmo
         cam_list = [item.camera for item in context.object.motion_cam.list]

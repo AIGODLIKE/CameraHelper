@@ -160,7 +160,9 @@ def get_offset_factor(self):
 
 
 def set_offset_factor(self, value):
-    val = max(min(value, 1), 0)
+    # 限制或循环val
+    val = max(min(value, 1), 0) # 循环
+
     self['offset_factor'] = val
 
     obj = self.id_data
@@ -240,6 +242,7 @@ class MotionCamListProp(PropertyGroup):
     path: PointerProperty(type=bpy.types.Object)
     path_attr: PointerProperty(type=bpy.types.Object)  # 用于实时采样属性
     path_mesh: PointerProperty(type=bpy.types.Object)  # 用于实时采样位置，绘制
+    path_type: EnumProperty(items=[('POLY', 'Linear', ''), ('BEZIER', 'Smooth', '')], default='BEZIER')
 
     # 偏移 用于混合相机其他参数
     offset_factor: FloatProperty(name='Offset Factor', min=0, max=1,
@@ -288,7 +291,7 @@ class ListAction:
             m_cam.list_index = new_index
 
             for i in range(old_index, new_index - 1):
-                bpy.ops.camhp.move_up_motion_cam()
+                bpy.ops.camhp.motion_list_up()
 
         elif self.action == 'REMOVE':
             m_cam.list.remove(self.index)
@@ -308,7 +311,7 @@ class ListAction:
             m_cam.list_index = len(m_cam.list) - 1
 
             for i in range(old_index, new_index - 1):
-                bpy.ops.camhp.move_up_motion_cam()
+                bpy.ops.camhp.motion_list_up()
 
         return {'FINISHED'}
 
@@ -337,17 +340,17 @@ class ListMove:
         m_cam.list_index = max(0, min(new_index, len(m_cam.list) - 1))
 
 
-class CAMHP_OT_add_motion_cam(ListAction, Operator):
+class CAMHP_OT_motion_list_add(ListAction, Operator):
     """"""
-    bl_idname = 'camhp.add_motion_cam'
+    bl_idname = 'camhp.motion_list_add'
     bl_label = 'Add'
 
     action = 'ADD'
 
 
-class CAMHP_OT_remove_motion_cam(ListAction, Operator):
+class CAMHP_OT_motion_list_remove(ListAction, Operator):
     """"""
-    bl_idname = 'camhp.remove_motion_cam'
+    bl_idname = 'camhp.motion_list_remove'
     bl_label = 'Remove'
 
     action = 'REMOVE'
@@ -355,7 +358,7 @@ class CAMHP_OT_remove_motion_cam(ListAction, Operator):
 
 class CAMHP_OT_copy_motion_cam(ListAction, Operator):
     """"""
-    bl_idname = 'camhp.copy_motion_cam'
+    bl_idname = 'camhp.motion_list_copy'
     bl_label = 'Copy'
 
     action = 'COPY'
@@ -363,7 +366,7 @@ class CAMHP_OT_copy_motion_cam(ListAction, Operator):
 
 class CAMHP_OT_move_up_motion_cam(ListMove, Operator):
     """"""
-    bl_idname = 'camhp.move_up_motion_cam'
+    bl_idname = 'camhp.motion_list_up'
     bl_label = 'Move Up'
 
     action = 'UP'
@@ -371,7 +374,7 @@ class CAMHP_OT_move_up_motion_cam(ListMove, Operator):
 
 class CAMHP_OT_move_down_motion_cam(ListMove, Operator):
     """"""
-    bl_idname = 'camhp.move_down_motion_cam'
+    bl_idname = 'camhp.motion_list_down'
     bl_label = 'Move Down'
 
     action = 'DOWN'
@@ -383,6 +386,8 @@ class CAMHP_OT_move_down_motion_cam(ListMove, Operator):
 from mathutils import Vector
 from ..gz.draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
 from ..gz.draw_utils.bl_ui_button import BL_UI_Button
+from ..gz.draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
+from ..gz.draw_utils.bl_ui_label import BL_UI_Label
 
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 
@@ -397,6 +402,7 @@ def get_obj_2d_loc(obj, context):
 class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
     bl_idname = 'camhp.add_motion_cams'
     bl_label = 'Add Motion Camera'
+    bl_options = {'UNDO_GROUPED', 'INTERNAL', 'BLOCKING', 'GRAB_CURSOR'}
 
     buttons = list()
     cam = None
@@ -405,6 +411,25 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         super().__init__()
         self.buttons.clear()
 
+        # 面板提示
+        self.panel = BL_UI_Drag_Panel(100, 300, 300, 290)
+        self.panel.bg_color = 0.2, 0.2, 0.2, 0.9
+
+        # self.btn_close = BL_UI_Button(20, 100, 120, 30)
+        # self.btn_close.bg_color = (0.2, 0.8, 0.8, 0.8)
+        # self.btn_close.hover_bg_color = (0.2, 0.9, 0.9, 1.0)
+        # self.btn_close.text = "Finished"
+        # self.btn_close.set_mouse_down(self.finish, None)
+
+        self.label_tip1 = BL_UI_Label(20, 120, 40, 50)
+        self.label_tip1.text = "左键->相机名字以添加源"
+        self.label_tip1.text_size = 22
+
+        self.label_tip2 = BL_UI_Label(20, 100, 40, 50)
+        self.label_tip2.text = "右键->结束添加模式"
+        self.label_tip2.text_size = 22
+
+        # 为每个相机添加一个按钮
         for obj in bpy.context.view_layer.objects:
             if obj.type != 'CAMERA': continue
 
@@ -423,7 +448,17 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
             self.buttons.append(btn)
 
     def on_invoke(self, context, event):
-        self.init_widgets(context, self.buttons)
+        widgets_panel = [self.label_tip1, self.label_tip2]
+        widgets = [self.panel]
+        widgets += widgets_panel
+
+        self.init_widgets(context, widgets_panel + self.buttons)
+
+        self.panel.add_widgets(widgets_panel)
+
+        # Open the panel at the mouse location
+        self.panel.set_location(context.area.width * 0.8,
+                                context.area.height * 1)
 
         # 创建相机
         cam_data = bpy.data.cameras.new(name='Camera')
@@ -509,19 +544,19 @@ class CAMHP_PT_MotionCamPanel(Panel):
 
         col_btn = row.column(align=1)
 
-        col_btn.operator('camhp.add_motion_cam', text='', icon='ADD')
+        col_btn.operator('camhp.motion_list_add', text='', icon='ADD')
 
-        d = col_btn.operator('camhp.remove_motion_cam', text='', icon='REMOVE')
+        d = col_btn.operator('camhp.motion_list_remove', text='', icon='REMOVE')
         d.index = context.object.motion_cam.list_index
 
         col_btn.separator()
 
-        col_btn.operator('camhp.move_up_motion_cam', text='', icon='TRIA_UP')
-        col_btn.operator('camhp.move_down_motion_cam', text='', icon='TRIA_DOWN')
+        col_btn.operator('camhp.motion_list_up', text='', icon='TRIA_UP')
+        col_btn.operator('camhp.motion_list_down', text='', icon='TRIA_DOWN')
 
         col_btn.separator()
 
-        c = col_btn.operator('camhp.copy_motion_cam', text='', icon='DUPLICATE')
+        c = col_btn.operator('camhp.motion_list_copy', text='', icon='DUPLICATE')
         c.index = context.object.motion_cam.list_index
 
     def draw_setttings(self, context, layout):
@@ -563,8 +598,8 @@ def register():
     bpy.utils.register_class(MotionCamListProp)
     bpy.types.Object.motion_cam = PointerProperty(type=MotionCamListProp)
     # list action
-    bpy.utils.register_class(CAMHP_OT_add_motion_cam)
-    bpy.utils.register_class(CAMHP_OT_remove_motion_cam)
+    bpy.utils.register_class(CAMHP_OT_motion_list_add)
+    bpy.utils.register_class(CAMHP_OT_motion_list_remove)
     bpy.utils.register_class(CAMHP_OT_copy_motion_cam)
     bpy.utils.register_class(CAMHP_OT_move_up_motion_cam)
     bpy.utils.register_class(CAMHP_OT_move_down_motion_cam)
@@ -584,8 +619,8 @@ def unregister():
     bpy.utils.unregister_class(MotionCamListProp)
     bpy.utils.unregister_class(MotionCamItemProps)
     # List
-    bpy.utils.unregister_class(CAMHP_OT_add_motion_cam)
-    bpy.utils.unregister_class(CAMHP_OT_remove_motion_cam)
+    bpy.utils.unregister_class(CAMHP_OT_motion_list_add)
+    bpy.utils.unregister_class(CAMHP_OT_motion_list_remove)
     bpy.utils.unregister_class(CAMHP_OT_copy_motion_cam)
     bpy.utils.unregister_class(CAMHP_OT_move_up_motion_cam)
     bpy.utils.unregister_class(CAMHP_OT_move_down_motion_cam)

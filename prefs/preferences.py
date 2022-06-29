@@ -7,12 +7,13 @@ from bpy.types import PropertyGroup
 
 
 class GizmoMotionCamera(PropertyGroup):
+    loop: BoolProperty(name="Loop", default=False)
+
     color: FloatVectorProperty(name='Color', subtype='COLOR_GAMMA', size=4,
                                default=(0.8, 0.0, 0.0, 0.6))
     color_highlight: FloatVectorProperty(name='Active Highlight', subtype='COLOR_GAMMA', size=4,
                                          default=(1, 0.0, 0.0, 0.8))
     scale_basis: FloatProperty(name='Scale', default=0.75, min=0.1)
-    use_draw_modal: BoolProperty(name='Draw Modal', default=True)
 
 
 class GizmoMotionSource(PropertyGroup):
@@ -21,7 +22,6 @@ class GizmoMotionSource(PropertyGroup):
     color_highlight: FloatVectorProperty(name='Active Highlight', subtype='COLOR_GAMMA', size=4,
                                          default=(0.0, 0.8, 1.0, 0.8))
     scale_basis: FloatProperty(name='Scale', default=0.5, min=0.05)
-    use_draw_modal: BoolProperty(name='Draw Modal', default=True)
 
 
 class DrawMotionCurve(PropertyGroup):
@@ -59,17 +59,16 @@ class CAMHP_Preference(bpy.types.AddonPreferences):
 
         box = col.box().column(align=True)
         box.label(text='Motion Camera', icon='GIZMO')
+        box.prop(self.gz_motion_camera, 'loop')
         box.prop(self.gz_motion_camera, 'color')
         box.prop(self.gz_motion_camera, 'color_highlight')
         box.prop(self.gz_motion_camera, 'scale_basis')
-        box.prop(self.gz_motion_camera, 'use_draw_modal')
 
         box = col.box().column(align=True)
         box.label(text='Source', icon='GIZMO')
         box.prop(self.gz_motion_source, 'color', text='Color')
         box.prop(self.gz_motion_source, 'color_highlight')
         box.prop(self.gz_motion_source, 'scale_basis')
-        box.prop(self.gz_motion_source, 'use_draw_modal')
 
         box = col.box().column(align=True)
         box.label(text='Motion Curve', icon='CURVE_DATA')
