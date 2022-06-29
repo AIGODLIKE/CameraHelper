@@ -40,7 +40,7 @@ def create_geo_shape(obj=None, type='TRIS'):
     else:
         tmp_mesh = bpy.data.meshes.new('tmp')
         bm = bmesh.new()
-        bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=0.5, calc_uvs=True)
+        bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=0.25, calc_uvs=True)
         bm.to_mesh(tmp_mesh)
         bm.free()
 

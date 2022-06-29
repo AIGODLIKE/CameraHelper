@@ -119,7 +119,7 @@ def get_geo_node_group(filename='process.blend', node_group=C_GET_CURVE_ATTR):
     return ng
 
 
-def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, close_spline=False):
+def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, close_spline=False, type='SMOOTH'):
     """根据点集生成贝塞尔曲线
 
     :param coords:list of tuple(x, y, z)
@@ -140,31 +140,38 @@ def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, clos
     curve_data.dimensions = '3D'
     curve_data.resolution_u = resolution_u
     # 创建样条
-    spline = curve_data.splines.new('BEZIER')
     # 创建点
-    spline.bezier_points.add(len(coords) - 1)
+    if type == 'SMOOTH':
+        spline = curve_data.splines.new('BEZIER')
+        spline.bezier_points.add(len(coords) - 1)
+    else:
+        spline = curve_data.splines.new('POLY')
+        spline.points.add(len(coords) - 1)
     # 设置点
     for i, coord in enumerate(coords):
         x, y, z = coord
-        spline.bezier_points[i].handle_right_type = 'AUTO'
-        spline.bezier_points[i].handle_left_type = 'AUTO'
-
-        spline.bezier_points[i].co = (x, y, z)
-        spline.bezier_points[i].handle_left = (x, y, z)
-        spline.bezier_points[i].handle_right = (x, y, z)
+        if type == 'SMOOTH':
+            spline.bezier_points[i].handle_right_type = 'AUTO'
+            spline.bezier_points[i].handle_left_type = 'AUTO'
+            spline.bezier_points[i].co = (x, y, z)
+            spline.bezier_points[i].handle_left = (x, y, z)
+            spline.bezier_points[i].handle_right = (x, y, z)
+        else:
+            spline.points[i].co = (x, y, z, 1)
 
     # 闭合，或为可选项
     spline.use_cyclic_u = close_spline
 
-    # 取消端点影响a
-    def map_handle_to_co(pt):
-        pt.handle_right_type = 'FREE'
-        pt.handle_left_type = 'FREE'
-        pt.handle_left = pt.co
-        pt.handle_right = pt.co
+    if type == 'SMOOTH':
+        # 取消端点影响a
+        def map_handle_to_co(pt):
+            pt.handle_right_type = 'FREE'
+            pt.handle_left_type = 'FREE'
+            pt.handle_left = pt.co
+            pt.handle_right = pt.co
 
-    map_handle_to_co(spline.bezier_points[0])
-    map_handle_to_co(spline.bezier_points[-1])
+        map_handle_to_co(spline.bezier_points[0])
+        map_handle_to_co(spline.bezier_points[-1])
 
     # 创建物体
     curve_obj = bpy.data.objects.new(curve_name, curve_data)

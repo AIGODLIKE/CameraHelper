@@ -9,6 +9,7 @@ from .utils import gen_bezier_curve_from_points, gen_sample_attr_obj, gen_sample
 
 C_ATTR_FAC = 'factor'
 C_ATTR_LENGTH = 'length'
+C_STATE_UPDATE = False  # 用于保护曲线更新的状态
 
 
 def get_active_motion_item(obj):
@@ -96,6 +97,7 @@ def gen_cam_path(self, context):
 
         cam_pts = [cam.matrix_world.translation for cam in cam_list]
         path = gen_bezier_curve_from_points(coords=cam_pts,
+                                            type=obj.motion_cam.path_type,
                                             curve_name=obj.name + '-MotionPath',
                                             resolution_u=12)
 
@@ -115,6 +117,7 @@ def gen_cam_path(self, context):
 
             hm.vertex_indices_set([i * 3, i * 3 + 1, i * 3 + 2])  # 跳过手柄点
             hm.object = cam
+
         # 生成用于采样/绘制的网格数据
         path_attr = gen_sample_attr_obj(path)
         path_mesh = gen_sample_mesh_obj(path)
@@ -150,7 +153,11 @@ def gen_cam_path(self, context):
         coll.objects.unlink(path_attr)
         coll.objects.unlink(path_mesh)
 
+    global C_STATE_UPDATE
+
+    C_STATE_UPDATE = True
     process()
+    C_STATE_UPDATE = False
 
 
 # 偏移factor的get/set-------------------------------------------------------------------
@@ -161,9 +168,13 @@ def get_offset_factor(self):
 
 def set_offset_factor(self, value):
     # 限制或循环val
-    val = max(min(value, 1), 0) # 循环
-
+    val = max(min(value, 1), 0)  # 循环
     self['offset_factor'] = val
+
+    global C_STATE_UPDATE
+    if C_STATE_UPDATE is True: return
+
+    C_STATE_UPDATE = True
 
     obj = self.id_data
     # obj.constraints['Motion Camera'].offset_factor = value
@@ -172,8 +183,8 @@ def set_offset_factor(self, value):
         return
 
     # 防止移动帧时的无限触发更新
-    if bpy.context.active_operator == getattr(getattr(bpy.ops, 'transform'), 'transform'):
-        return
+    if hasattr(bpy.context, 'active_operator'):
+        if bpy.context.active_operator == getattr(getattr(bpy.ops, 'transform'), 'transform'): return
 
     path = obj.motion_cam.path
     path_attr = obj.motion_cam.path_attr
@@ -219,6 +230,8 @@ def set_offset_factor(self, value):
             interpolate_cam(obj, from_obj, to_obj, true_fac)
             break
 
+    C_STATE_UPDATE = False
+
 
 #  --------------------------------------------------------------------------------
 
@@ -242,7 +255,10 @@ class MotionCamListProp(PropertyGroup):
     path: PointerProperty(type=bpy.types.Object)
     path_attr: PointerProperty(type=bpy.types.Object)  # 用于实时采样属性
     path_mesh: PointerProperty(type=bpy.types.Object)  # 用于实时采样位置，绘制
-    path_type: EnumProperty(items=[('POLY', 'Linear', ''), ('BEZIER', 'Smooth', '')], default='BEZIER')
+    path_type: EnumProperty(name='Type', items=[('LINEAR', 'Linear', ''), ('SMOOTH', 'Smooth', '')],
+                            default='SMOOTH',
+                            options={'HIDDEN'},
+                            update=gen_cam_path)
 
     # 偏移 用于混合相机其他参数
     offset_factor: FloatProperty(name='Offset Factor', min=0, max=1,
@@ -526,7 +542,9 @@ class CAMHP_PT_MotionCamPanel(Panel):
     def draw_control(self, context, layout):
         layout.label(text=context.object.name, icon=context.object.type + '_DATA')
 
+        layout.prop(context.object.motion_cam, 'path_type')
         layout.prop(context.object.motion_cam, 'offset_factor', slider=True)
+
         # 视口k帧
         if context.area.type == 'VIEW_3D':
             layout.operator('camhp.insert_keyframe')
