@@ -74,34 +74,38 @@ class CameraMotionPath():
         bgl.glEnable(bgl.GL_DEPTH_TEST)
 
 
-# class CameraThumb():
-#
-#     def __init__(self, context):
-#         self.context = context
-#
-#     def __call__(self, context):
-#         self.draw(context)
-#
-#     def draw(self, context):
-#         if context.object and context.object.type == 'CAMERA':
-#             scene = context.scene
-#
-#             view_matrix = scene.camera.matrix_world.inverted()
-#
-#             projection_matrix = scene.camera.calc_matrix_camera(
-#                 context.evaluated_depsgraph_get(), x=WIDTH, y=HEIGHT)
-#
-#             offscreen.draw_view3d(
-#                 scene,
-#                 context.view_layer,
-#                 context.space_data,
-#                 context.region,
-#                 view_matrix,
-#                 projection_matrix,
-#                 do_color_management=False)
-#
-#             gpu.state.depth_mask_set(False)
-#             draw_texture_2d(offscreen.texture_color, (10, 10), WIDTH, HEIGHT)
+class CameraThumb():
+
+    def __init__(self, context,deps):
+        self.context = context
+        self.deps = deps
+        print('Init CameraThumb')
+
+    def __call__(self, context):
+        self.draw(context)
+
+    def draw(self, context):
+        if context.object and context.object.type == 'CAMERA':
+            scene = context.scene
+            print('get camera matrix')
+
+            view_matrix = scene.camera.matrix_world.inverted()
+
+            projection_matrix = scene.camera.calc_matrix_camera(self.deps, x=WIDTH, y=HEIGHT)
+            print('draw offscreen')
+
+            offscreen.draw_view3d(
+                scene,
+                context.view_layer,
+                context.space_data,
+                context.region,
+                view_matrix,
+                projection_matrix,
+                do_color_management=False)
+
+            print('draw texture_2d')
+            gpu.state.depth_mask_set(False)
+            draw_texture_2d(offscreen.texture_color, (10, 10), WIDTH, HEIGHT)
 
 
 from gpu.types import GPUOffScreen
@@ -141,9 +145,9 @@ class CameraThumbnail:
     # camera_data_dict = {}
 
     def __init__(self, context):
-        # print("WG::init")
+        print("WG::init")
         # prefs = get_prefs(context)
-
+        self.deps = context.evaluated_depsgraph_get()
         color_border = (.92, .92, .92, 1.0)
         color_text = (.92, .92, .92, 1.0)
 
@@ -263,7 +267,7 @@ class CameraThumbnail:
         return check_space_data_props(context.space_data, self.space_data_dict)
 
     def init_offscreen(self) -> None:
-        # print("WG::init_offscreen")
+        print("WG::init_offscreen")
         if self.__class__._offscreen_instance:
             self.offscreen = self.__class__._offscreen_instance
         else:
@@ -287,7 +291,7 @@ class CameraThumbnail:
             indices=indices)
 
     def update(self, context):
-        # print("WG::update")
+        print("WG::update")
         if not context.object:
             return
         elif context.object.type != 'CAMERA':
@@ -468,7 +472,7 @@ class CameraThumbnail:
             context.space_data,
             context.region,
             self.camera.matrix_world.inverted(),
-            self.camera.calc_matrix_camera(context.evaluated_depsgraph_get(), x=self.width, y=self.height)
+            self.camera.calc_matrix_camera(self.deps, x=self.width, y=self.height)
         )
 
         return True
@@ -476,8 +480,11 @@ class CameraThumbnail:
     def draw(self, context):
         shader_2d.bind()
         shader_2d.uniform_float('color', self.color_border)
+        print('draw1')
         self.repaint(context)
+        print("draw2")
         self.batch.draw(shader_2d)
+        print("draw3")
         draw_tex(self.offscreen.color_texture, self.position, self.width, self.height)
         if not self.camera:
             return
@@ -495,4 +502,6 @@ class CameraThumbnail:
         text_disable(0, TEXT_FLAG_SHADOW)
 
     def __call__(self, context):
+        print('call')
+
         self.draw(context)

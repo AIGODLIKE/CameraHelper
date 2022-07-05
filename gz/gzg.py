@@ -333,6 +333,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
         if self.gz_motion_cam:
             self.gz_motion_cam.matrix_basis = context.object.matrix_world.normalized()
             self.gz_motion_cam.matrix_basis.col[3][2] += 0.5
+            # self.gz_motion_cam.translation[0] += self.gz_motion_cam.target_get_value('offset')
             # self.gz_motion_cam.scale_basis = 0.3
 
         for gz in self._move_gz.keys():
@@ -344,6 +345,83 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
         context.area.tag_redraw()
 
 
+from .draw_utils.shader import CameraThumbnail
+
+
+class TEST_WIDGET(GizmoGroup):
+    bl_idname = "TEST_WIDGET"
+    bl_label = "Camera Preview Widget"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+    bl_options = {'PERSISTENT', 'SHOW_MODAL_ALL', 'SCALE'}
+
+    _instance1 = None
+    _draw_handler_instance1 = None
+    _thumbnail_instance1 = None
+
+    deps = None
+
+    @classmethod
+    def poll(cls, context):
+        res = cls._poll(context)
+        # print(res)
+        return True
+
+    @classmethod
+    def _poll(cls, context):
+        pass
+
+    @classmethod
+    def stop_draw_handler(cls):
+        if cls._draw_handler_instance1:
+            print("GZG::stop_draw_handler")
+            try:
+                SpaceView3D.draw_handler_remove(cls._draw_handler_instance1, 'WINDOW')
+            except ValueError:
+                print(
+                    "ERROR: DRAW HANDLER -> ValueError: callback_remove(handler): NULL handler given, invalid or already removed")
+            cls._draw_handler_instance1 = None
+            return True
+        return False
+
+    @classmethod
+    def start_draw_handler(cls, context):
+        if cls._draw_handler_instance1:
+            # cls.stop_draw_handler()
+            return
+        print("CamHp::start_draw_handler")
+        cls._draw_handler_instance = SpaceView3D.draw_handler_add(
+            cls._thumbnail_instance1, (context,), 'WINDOW', 'POST_VIEW'
+        )
+
+    def draw_prepare(self, context):
+        thumbnail = self.__class__._thumbnail_instance1
+        if not thumbnail:
+            return
+
+    def setup(self, context):
+        self.deps = context.evaluated_depsgraph_get()
+
+        self.__class__._instance1 = self
+
+        self.draw_prepare(context)
+
+    def refresh(self, context):
+        # print("GZG::refresh")
+        ob = context.object
+        view = context.space_data
+        # 检测是否选中摄像机
+        if ob and ob.type in {'CAMERA',
+                              'EMPTY'} and view.region_3d.view_perspective != 'CAMERA' and not view.region_quadviews:
+            if not self._thumbnail_instance1:
+                self._thumbnail_instance1 = CameraThumbnail(context)
+                self.start_draw_handler(context)
+            return
+        else:
+            self.stop_draw_handler()
+            return
+
+
 def register():
     bpy.utils.register_class(CAMHP_UI_persp_view)
     bpy.utils.register_class(CAMHP_UI_cam_view)
@@ -351,6 +429,7 @@ def register():
     bpy.utils.register_class(CAMHP_GT_custom_move_1d)
     bpy.utils.register_class(CAMHP_GT_custom_move_3d)
     bpy.utils.register_class(CAMHP_UI_draw_motion_curve)
+    # bpy.utils.register_class(TEST_WIDGET)
 
 
 def unregister():
@@ -360,3 +439,4 @@ def unregister():
     bpy.utils.unregister_class(CAMHP_GT_custom_move_1d)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_3d)
     bpy.utils.unregister_class(CAMHP_UI_draw_motion_curve)
+    # bpy.utils.unregister_class(TEST_WIDGET)

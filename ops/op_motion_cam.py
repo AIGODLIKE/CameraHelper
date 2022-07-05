@@ -1,4 +1,6 @@
 import bpy
+import ast
+import mathutils
 from bpy.types import PropertyGroup, Operator, Panel, UIList
 from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntProperty, StringProperty, BoolProperty, \
     EnumProperty
@@ -10,6 +12,32 @@ from .utils import gen_bezier_curve_from_points, gen_sample_attr_obj, gen_sample
 C_ATTR_FAC = 'factor'
 C_ATTR_LENGTH = 'length'
 C_STATE_UPDATE = False  # 用于保护曲线更新的状态
+
+
+def parse_data_path(src_obj, scr_data_path):
+    """解析来自用户的data_path
+
+    :param src_obj:
+    :param scr_data_path:
+    :return:
+    """
+
+    def get_obj_and_attr(obj, data_path):
+        path = data_path.split('.')
+        if len(path) == 1 and hasattr(obj, path[0]):
+            return obj, path[0]
+        else:
+            if path[0] == '':
+                return obj, ''
+            if not hasattr(obj, path[0]):
+                return obj, None
+
+            back_obj = getattr(obj, path[0])
+            back_path = '.'.join(path[1:])
+
+            return get_obj_and_attr(back_obj, back_path)
+
+    return get_obj_and_attr(src_obj, scr_data_path)
 
 
 def get_active_motion_item(obj):
@@ -62,10 +90,11 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
     :param fac:
     :return:
     """
-    use_euler = tg_obj.motion_cam.use_euler
-    use_lens = tg_obj.motion_cam.use_lens
-    use_aperture_fstop = tg_obj.motion_cam.use_aperture_fstop
-    use_focus_distance = tg_obj.motion_cam.use_focus_distance
+    affect = tg_obj.motion_cam.affect
+    use_euler = affect.use_euler
+    use_lens = affect.use_lens
+    use_aperture_fstop = affect.use_aperture_fstop
+    use_focus_distance = affect.use_focus_distance
 
     # 限定变化, 位置变化由曲线约束
     if use_euler:
@@ -78,6 +107,32 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
             tg_obj.data.dof.aperture_fstop = get_interpolate_fstop(from_obj, to_obj, fac)
         if use_focus_distance and tg_obj.data.dof.use_dof:
             tg_obj.data.dof.focus_distance = get_interpolate_focal(from_obj, to_obj, fac)
+
+    # 自定义
+    for item in affect.custom_props:
+        if item.data_path == '': continue
+
+        src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
+        _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
+        _to_obj, to_attr = parse_data_path(to_obj.data, item.data_path)
+        if from_attr is None or to_attr is None or src_attr is None: continue
+
+        from_value = getattr(_from_obj, from_attr)
+        to_value = getattr(_to_obj, to_attr)
+
+        try:
+            if isinstance(from_value, float):
+                setattr(src_obj, src_attr, mix_value(from_value, to_value, fac))
+            elif isinstance(from_value, mathutils.Vector):
+                setattr(src_obj, src_attr, from_value.copy().lerp(to_value, fac))
+            elif isinstance(from_value, mathutils.Matrix):
+                setattr(src_obj, src_attr, from_value.copy().lerp(to_value, fac))
+            elif isinstance(from_value, bool):
+                setattr(src_obj, src_attr, from_value)
+            elif isinstance(from_value, bpy.types.Object):
+                setattr(src_obj, src_attr, from_value)
+        except Exception as e:
+            print(e)
 
 
 def gen_cam_path(self, context):
@@ -173,18 +228,21 @@ def set_offset_factor(self, value):
     val = max(min(value, 1), 0)  # 循环
     self['offset_factor'] = val
 
+    obj = self.id_data
+
     global C_STATE_UPDATE
     if C_STATE_UPDATE is True: return
 
     C_STATE_UPDATE = True
 
-    obj = self.id_data
     # obj.constraints['Motion Camera'].offset_factor = value
 
-    if 'Motion Camera' not in self.id_data.constraints:
+    if 'Motion Camera' not in obj.constraints:
+        return
+    if obj.motion_cam.affect.enable is False:
         return
 
-    # 防止移动帧时的无限触发更新
+        # 防止移动帧时的无限触发更新
     if hasattr(bpy.context, 'active_operator'):
         if bpy.context.active_operator == getattr(getattr(bpy.ops, 'transform'), 'transform'): return
 
@@ -235,6 +293,14 @@ def set_offset_factor(self, value):
     C_STATE_UPDATE = False
 
 
+def update_driver(self, context):
+    obj = self.id_data
+    if 'Motion Camera' not in obj.constraints:
+        return
+    cons = obj.constraints['Motion Camera']
+    cons.enabled = obj.motion_cam.affect.enable
+
+
 #  --------------------------------------------------------------------------------
 
 # Properties --------------------------------------------------------------
@@ -244,6 +310,20 @@ class MotionCamItemProps(PropertyGroup):
     camera: PointerProperty(name='Camera', type=bpy.types.Object,
                             poll=lambda self, obj: obj.type == 'CAMERA' and obj != self,
                             update=gen_cam_path)
+
+
+class MotionCamAffectCustomProp(PropertyGroup):
+    data_path: StringProperty(name='Data Path', default='')
+
+
+class MotionCamAffect(PropertyGroup):
+    enable: BoolProperty(name='Enable', default=True, update=update_driver, options={'HIDDEN'}, )
+    use_euler: BoolProperty(name='Rotation', default=True, options={'HIDDEN'})
+    use_lens: BoolProperty(name='Focal Length', default=True, options={'HIDDEN'})
+    use_focus_distance: BoolProperty(name='Focus Distance', default=True, options={'HIDDEN'})
+    use_aperture_fstop: BoolProperty(name='F-Stop', default=True, options={'HIDDEN'})
+
+    custom_props: CollectionProperty(type=MotionCamAffectCustomProp)
 
 
 class MotionCamListProp(PropertyGroup):
@@ -268,11 +348,8 @@ class MotionCamListProp(PropertyGroup):
                                  set=set_offset_factor,
                                  get=get_offset_factor)
 
-    # 限定
-    use_euler: BoolProperty(name='Rotate', default=True, options={'HIDDEN'})
-    use_lens: BoolProperty(name='Focal Length', default=True, options={'HIDDEN'})
-    use_focus_distance: BoolProperty(name='Focus Distance', default=True, options={'HIDDEN'})
-    use_aperture_fstop: BoolProperty(name='F-Stop', default=True, options={'HIDDEN'})
+    # 影响
+    affect: PointerProperty(type=MotionCamAffect)
 
 
 ###############################################################################
@@ -280,6 +357,38 @@ class MotionCamListProp(PropertyGroup):
 
 # List/Operators ---------------------------------------------------------------
 ###############################################################################
+
+class CAMHP_OT_affect_add_custom_prop(Operator):
+    bl_idname = 'camhp.affect_add_custom_prop'
+    bl_label = 'Add Custom Prop'
+    bl_description = 'Add Custom Prop'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj = context.object
+        m_cam = obj.motion_cam
+        affect = m_cam.affect
+
+        item = affect.custom_props.add()
+        return {'FINISHED'}
+
+
+class CAMHP_OT_affect_remove_custom_prop(Operator):
+    bl_idname = 'camhp.affect_remove_custom_prop'
+    bl_label = 'Remove'
+    bl_description = 'Remove Custom Prop'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    index: IntProperty()
+
+    def execute(self, context):
+        obj = context.object
+        m_cam = obj.motion_cam
+        affect = m_cam.affect
+
+        affect.custom_props.remove(self.index)
+        return {'FINISHED'}
+
 
 class CAMHP_UL_CameraList(UIList):
 
@@ -512,6 +621,99 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         return super().modal(context, event)
 
 
+# bake motion camera
+class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
+    bl_idname = "camhp.bake_motion_cam"
+    bl_label = "Bake Motion Camera"
+
+    frame_start: IntProperty(name="Start Frame", default=1)
+    frame_end: IntProperty(name="End Frame", default=100)
+    frame_step: IntProperty(name="Frame Step", default=1)
+
+    def execute(self, context):
+        euler_prev = None
+        m_cam = context.object.motion_cam
+        affect = m_cam.affect
+
+        name = context.object.name + '_bake'
+        data_name = context.object.data.name + '_bake'
+        cam_data = bpy.data.cameras.new(name=data_name)
+        ob = bpy.data.objects.new(name, cam_data)
+        ob.constraints.clear()
+        ob.location = 0, 0, 0
+
+        context.collection.objects.link(ob)
+
+        for f in range(self.frame_start, self.frame_end):
+            context.scene.frame_current = f
+            context.view_layer.update()
+            matrix = context.object.matrix_world
+
+            loc = matrix.to_translation()
+            ob.location = loc
+            ob.keyframe_insert('location')
+
+            if affect.use_euler:
+                if euler_prev is None:
+                    euler = matrix.to_euler(context.object.rotation_mode)
+                else:
+                    euler = matrix.to_euler(context.object.rotation_mode, euler_prev)
+                euler_prev = euler.copy()
+
+                ob.rotation_euler = euler_prev
+                ob.keyframe_insert('rotation_euler')
+
+            if context.object.type == 'CAMERA':
+                if affect.use_lens:
+                    ob.data.lens = context.object.data.lens
+                    ob.data.keyframe_insert('lens')
+
+                if affect.use_focus_distance:
+                    ob.data.dof.focus_distance = context.object.data.dof.focus_distance
+                    ob.data.dof.keyframe_insert('focus_distance')
+
+                if affect.use_aperture_fstop:
+                    ob.data.dof.aperture_fstop = context.object.dof.data.aperture_fstop
+                    ob.data.dof.keyframe_insert('aperture_fstop')
+            # 自定义属性
+            for item in affect.custom_props:
+                if item.data_path == '': continue
+
+                tg_obj = ob
+                from_obj = context.object
+
+                src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
+                _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
+                if from_attr is None or src_attr is None or src_obj is None: continue
+
+                from_value = getattr(_from_obj, from_attr)
+
+                try:
+                    if isinstance(from_value, float):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, mathutils.Vector):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, mathutils.Matrix):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, bool):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, bpy.types.Object):
+                        setattr(src_obj, src_attr, from_value)
+
+                    if hasattr(src_obj, 'keyframe_insert'):
+                        kf = getattr(src_obj, 'keyframe_insert')
+                        kf(src_attr)
+
+                except Exception as e:
+                    print(e)
+
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+
 ###############################################################################
 
 
@@ -538,7 +740,7 @@ class CAMHP_PT_MotionCamPanel(Panel):
 
         if context.object.motion_cam.ui == 'CONTROL':
             self.draw_control(context, layout)
-        else:
+        elif context.object.motion_cam.ui == 'AFFECT':
             self.draw_setttings(context, layout)
 
     def draw_control(self, context, layout):
@@ -579,19 +781,53 @@ class CAMHP_PT_MotionCamPanel(Panel):
         c = col_btn.operator('camhp.motion_list_copy', text='', icon='DUPLICATE')
         c.index = context.object.motion_cam.list_index
 
+        layout.operator('camhp.bake_motion_cam')
+
     def draw_setttings(self, context, layout):
+
         col = layout.column()
         col.use_property_split = True
+        col.active = context.object.motion_cam.affect.enable
 
-        col.prop(context.object.motion_cam, 'use_euler')
-        col.prop(context.object.motion_cam, 'use_lens')
+        affect = context.object.motion_cam.affect
+
+        col.prop(affect, 'enable')
+
+        col.separator()
+
+        col.prop(affect, 'use_euler')
+        col.prop(affect, 'use_lens')
 
         col.separator()
 
         box = col.box().column(align=True)
         box.label(text='Depth of Field')
-        box.prop(context.object.motion_cam, 'use_focus_distance')
-        box.prop(context.object.motion_cam, 'use_aperture_fstop')
+        box.prop(affect, 'use_focus_distance')
+        box.prop(affect, 'use_aperture_fstop')
+
+        box = col.box().column(align=True)
+        box.label(text='Custom Properties')
+        box.separator()
+
+        for i, item in enumerate(affect.custom_props):
+            if i == 0:
+                box.label(text='Data Path')
+
+            row = box.row()
+            row.use_property_split = False
+            # 检测是否有效
+            src_obj, src_attr = parse_data_path(context.object.data, item.data_path)
+            if src_attr is None:
+                row.alert = True
+                row.label(text='Invalid')
+
+            row.prop(item, 'data_path', text='')
+
+            row.operator('camhp.affect_remove_custom_prop', text='', icon='X', emboss=False).index = i
+            box.separator(factor=0.5)
+
+        box.separator(factor=0.5)
+        box.operator('camhp.affect_add_custom_prop', text='Add', icon='ADD')
 
 
 def draw_context(self, context):
@@ -615,9 +851,14 @@ def draw_add_context(self, context):
 
 def register():
     bpy.utils.register_class(MotionCamItemProps)
+    bpy.utils.register_class(MotionCamAffectCustomProp)
+    bpy.utils.register_class(MotionCamAffect)
     bpy.utils.register_class(MotionCamListProp)
     bpy.types.Object.motion_cam = PointerProperty(type=MotionCamListProp)
     # list action
+    bpy.utils.register_class(CAMHP_OT_affect_add_custom_prop)
+    bpy.utils.register_class(CAMHP_OT_affect_remove_custom_prop)
+
     bpy.utils.register_class(CAMHP_OT_motion_list_add)
     bpy.utils.register_class(CAMHP_OT_motion_list_remove)
     bpy.utils.register_class(CAMHP_OT_copy_motion_cam)
@@ -629,6 +870,7 @@ def register():
     bpy.utils.register_class(CAMHP_PT_MotionCamPanel)
 
     bpy.utils.register_class(CAMHP_PT_add_motion_cams)
+    bpy.utils.register_class(CAMHP_OT_bake_motion_cam)
 
     # bpy.types.VIEW3D_MT_object_context_menu.append(draw_context)
     bpy.types.VIEW3D_MT_object_context_menu.append(draw_add_context)
@@ -637,8 +879,13 @@ def register():
 def unregister():
     del bpy.types.Object.motion_cam
     bpy.utils.unregister_class(MotionCamListProp)
+    bpy.utils.unregister_class(MotionCamAffect)
+    bpy.utils.unregister_class(MotionCamAffectCustomProp)
     bpy.utils.unregister_class(MotionCamItemProps)
     # List
+    bpy.utils.unregister_class(CAMHP_OT_affect_add_custom_prop)
+    bpy.utils.unregister_class(CAMHP_OT_affect_remove_custom_prop)
+
     bpy.utils.unregister_class(CAMHP_OT_motion_list_add)
     bpy.utils.unregister_class(CAMHP_OT_motion_list_remove)
     bpy.utils.unregister_class(CAMHP_OT_copy_motion_cam)
@@ -650,5 +897,6 @@ def unregister():
     bpy.utils.unregister_class(CAMHP_PT_MotionCamPanel)
 
     bpy.utils.unregister_class(CAMHP_PT_add_motion_cams)
+    bpy.utils.unregister_class(CAMHP_OT_bake_motion_cam)
     # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_context)
     bpy.types.VIEW3D_MT_object_context_menu.remove(draw_add_context)
