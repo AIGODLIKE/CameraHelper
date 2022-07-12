@@ -38,18 +38,19 @@ def get_geo_node_file(filename='process.blend') -> Path:
     return Path(__file__).parent.joinpath('nodes', filename)
 
 
-def get_mesh_obj_coords(context, obj) -> list:
+def get_mesh_obj_coords(context, obj, deps=None) -> list:
     """获取mesh对象的位置
 
     :param obj:bpy.types.Object
     :return:list
     """
-    depsg_eval = context.evaluated_depsgraph_get()
+    depsg_eval = deps if deps else context.evaluated_depsgraph_get()  # deps 由外部传入，防止冻结
+
     obj_eval = obj.evaluated_get(depsg_eval)
     return [v.co for v in obj_eval.data.vertices]
 
 
-def get_mesh_obj_attrs(context, obj) -> dict:
+def get_mesh_obj_attrs(context, obj, deps=None) -> dict:
     """获取mesh对象的属性值
 
     :param obj:bpy.types.Object
@@ -58,7 +59,7 @@ def get_mesh_obj_attrs(context, obj) -> dict:
     """
     attr_dict = dict()
 
-    depsg_eval = context.evaluated_depsgraph_get()
+    depsg_eval = deps if deps else context.evaluated_depsgraph_get()  # deps 由外部传入，防止冻结
     obj_eval = obj.evaluated_get(depsg_eval)
 
     for name, attr in obj_eval.data.attributes.items():

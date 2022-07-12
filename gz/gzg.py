@@ -84,6 +84,20 @@ class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
         props = gz.target_set_operator("camhp.add_view_cam")
         self.gz_add_cam = gz
 
+        gz = self.gizmos.new("GIZMO_GT_button_2d")
+        gz.icon = 'EVENT_P'
+        gz.draw_options = {'BACKDROP', 'OUTLINE'}
+        gz.use_tooltip = True
+        gz.alpha = .8
+        gz.color = 0.08, 0.08, 0.08
+        gz.color_highlight = 0.28, 0.28, 0.28
+        gz.alpha_highlight = 0.8
+
+        gz.scale_basis = (80 * 0.35) / 2  # Same as buttons defined in C
+
+        props = gz.target_set_operator("camhp.campv_popup")
+        self.gz_add_cam = gz
+
 
 class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
     bl_idname = "CAMHP_UI_cam_view"
@@ -169,81 +183,32 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
         self.add_gz_lock(context)
 
 
-from .draw_utils.shader import CameraMotionPath
 from .gz_custom import CAMHP_GT_custom_move_3d, CAMHP_GT_custom_move_1d, CAMHP_OT_insert_keyframe
 from ..prefs.get_pref import get_pref
 
 
-class TargetProperties(PropertyGroup):
-    """A target is a property of an object that is meant to be driven by a widget"""
-    pass
-
-
-class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
-    bl_idname = "CAMHP_UI_draw_motion_curve"
+class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
+    bl_idname = "CAMHP_UI_motion_curve_gz"
     bl_label = "Camera Motion Curve"
     bl_options = {'3D', 'PERSISTENT'}
-
-    _instance = None
-    _draw_handler_instance = None
-    _thumbnail_instance = None
 
     _move_gz = dict()
     cam_list = list()
 
     @classmethod
     def poll(cls, context):
-        res = cls._poll(context)
-        return res
-
-    @classmethod
-    def _poll(cls, context):
         ob = context.object
         view = context.space_data
-        # 检测是否选中摄像机
         if ob and ob.type in {'CAMERA',
                               'EMPTY'} and view.region_3d.view_perspective != 'CAMERA' and not view.region_quadviews:
-            if not cls._thumbnail_instance:
-                cls._thumbnail_instance = CameraMotionPath(context)
-                cls.start_draw_handler(context)
             return True
         else:
-            cls.stop_draw_handler()
             return False
 
-    @classmethod
-    def stop_draw_handler(cls):
-        if cls._draw_handler_instance:
-            print("CamHp::stop_draw_handler")
-            try:
-                SpaceView3D.draw_handler_remove(cls._draw_handler_instance, 'WINDOW')
-            except ValueError:
-                print(
-                    "ERROR: DRAW HANDLER -> ValueError: callback_remove(handler): NULL handler given, invalid or already removed")
-            cls._draw_handler_instance = None
-            cls._thumbnail_instance = None
-            return True
-        return False
-
-    @classmethod
-    def start_draw_handler(cls, context):
-        if cls._draw_handler_instance:
-            # cls.stop_draw_handler()
-            return
-        print("CamHp::start_draw_handler")
-        cls._draw_handler_instance = SpaceView3D.draw_handler_add(
-            cls._thumbnail_instance, (context,), 'WINDOW', 'POST_VIEW'
-        )
-
     def draw_prepare(self, context):
-        thumbnail = self.__class__._thumbnail_instance
-
-        if not thumbnail:
-            return
+        pass
 
     def setup(self, context):
-        self.__class__._instance = self
-
         self._move_gz.clear()
         self.gz_motion_cam = None
 
@@ -268,7 +233,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.color = pref_gz.color[:3]
             gz.color_highlight = pref_gz.color_highlight[:3]
             gz.alpha_highlight = pref_gz.color_highlight[3]
-            # gz.scale_basis = pref_gz.scale_basis
+
             gz.use_draw_modal = True
             gz.use_draw_scale = False
 
@@ -300,7 +265,7 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
             gz.color = pref_gz.color[:3]
             gz.color_highlight = pref_gz.color_highlight[:3]
             gz.alpha_highlight = pref_gz.color_highlight[3]
-            # gz.scale_basis = pref_gz.scale_basis
+
             gz.use_draw_modal = True
             gz.use_draw_scale = False
 
@@ -333,93 +298,8 @@ class CAMHP_UI_draw_motion_curve(GizmoGroupBase, GizmoGroup):
         if self.gz_motion_cam:
             self.gz_motion_cam.matrix_basis = context.object.matrix_world.normalized()
             self.gz_motion_cam.matrix_basis.col[3][2] += 0.5
-            # self.gz_motion_cam.translation[0] += self.gz_motion_cam.target_get_value('offset')
-            # self.gz_motion_cam.scale_basis = 0.3
-
-        for gz in self._move_gz.keys():
-            # gz.matrix_basis = gz._camera.matrix_world.normalized()
-            # gz.matrix_basis.translation = -gz.target_get_value('offset')
-            # gz.scale_basis = 0.2
-            pass
 
         context.area.tag_redraw()
-
-
-from .draw_utils.shader import CameraThumbnail
-
-
-class TEST_WIDGET(GizmoGroup):
-    bl_idname = "TEST_WIDGET"
-    bl_label = "Camera Preview Widget"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'WINDOW'
-    bl_options = {'PERSISTENT', 'SHOW_MODAL_ALL', 'SCALE'}
-
-    _instance1 = None
-    _draw_handler_instance1 = None
-    _thumbnail_instance1 = None
-
-    deps = None
-
-    @classmethod
-    def poll(cls, context):
-        res = cls._poll(context)
-        # print(res)
-        return True
-
-    @classmethod
-    def _poll(cls, context):
-        pass
-
-    @classmethod
-    def stop_draw_handler(cls):
-        if cls._draw_handler_instance1:
-            print("GZG::stop_draw_handler")
-            try:
-                SpaceView3D.draw_handler_remove(cls._draw_handler_instance1, 'WINDOW')
-            except ValueError:
-                print(
-                    "ERROR: DRAW HANDLER -> ValueError: callback_remove(handler): NULL handler given, invalid or already removed")
-            cls._draw_handler_instance1 = None
-            return True
-        return False
-
-    @classmethod
-    def start_draw_handler(cls, context):
-        if cls._draw_handler_instance1:
-            # cls.stop_draw_handler()
-            return
-        print("CamHp::start_draw_handler")
-        cls._draw_handler_instance = SpaceView3D.draw_handler_add(
-            cls._thumbnail_instance1, (context,), 'WINDOW', 'POST_VIEW'
-        )
-
-    def draw_prepare(self, context):
-        thumbnail = self.__class__._thumbnail_instance1
-        if not thumbnail:
-            return
-
-    def setup(self, context):
-        self.deps = context.evaluated_depsgraph_get()
-
-        self.__class__._instance1 = self
-
-        self.draw_prepare(context)
-
-    def refresh(self, context):
-        # print("GZG::refresh")
-        ob = context.object
-        view = context.space_data
-        # 检测是否选中摄像机
-        if ob and ob.type in {'CAMERA',
-                              'EMPTY'} and view.region_3d.view_perspective != 'CAMERA' and not view.region_quadviews:
-            if not self._thumbnail_instance1:
-                self._thumbnail_instance1 = CameraThumbnail(context)
-                self.start_draw_handler(context)
-            return
-        else:
-            self.stop_draw_handler()
-            return
 
 
 def register():
@@ -428,8 +308,7 @@ def register():
     bpy.utils.register_class(CAMHP_OT_insert_keyframe)
     bpy.utils.register_class(CAMHP_GT_custom_move_1d)
     bpy.utils.register_class(CAMHP_GT_custom_move_3d)
-    bpy.utils.register_class(CAMHP_UI_draw_motion_curve)
-    # bpy.utils.register_class(TEST_WIDGET)
+    bpy.utils.register_class(CAMHP_UI_motion_curve_gz)
 
 
 def unregister():
@@ -438,5 +317,4 @@ def unregister():
     bpy.utils.unregister_class(CAMHP_OT_insert_keyframe)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_1d)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_3d)
-    bpy.utils.unregister_class(CAMHP_UI_draw_motion_curve)
-    # bpy.utils.unregister_class(TEST_WIDGET)
+    bpy.utils.unregister_class(CAMHP_UI_motion_curve_gz)

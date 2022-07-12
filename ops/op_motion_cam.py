@@ -1,10 +1,8 @@
 import bpy
-import ast
 import mathutils
 from bpy.types import PropertyGroup, Operator, Panel, UIList
 from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntProperty, StringProperty, BoolProperty, \
     EnumProperty
-from pathlib import Path
 
 from .utils import meas_time, get_mesh_obj_attrs
 from .utils import gen_bezier_curve_from_points, gen_sample_attr_obj, gen_sample_mesh_obj
@@ -510,11 +508,10 @@ class CAMHP_OT_move_down_motion_cam(ListMove, Operator):
 # Operator for the list of cameras -------------------------------------------
 ###############################################################################
 
-from mathutils import Vector
-from ..gz.draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
-from ..gz.draw_utils.bl_ui_button import BL_UI_Button
-from ..gz.draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
-from ..gz.draw_utils.bl_ui_label import BL_UI_Label
+from .draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
+from .draw_utils.bl_ui_button import BL_UI_Button
+from .draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
+from .draw_utils.bl_ui_label import BL_UI_Label
 
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 

@@ -41,7 +41,6 @@ class CAMHP_OT_move_view_between_cams(Operator):
     def remove_handle(self):
         # bpy.types.SpaceNodeEditor.draw_handler_remove(self._handle, 'WINDOW')
         bpy.context.window_manager.event_timer_remove(self._timer)
-        bpy.context.window_manager.mathp_node_anim = False
 
     def append_handle(self):
         self._timer = bpy.context.window_manager.event_timer_add(self.anim_time / self.anim_iter,
@@ -50,7 +49,6 @@ class CAMHP_OT_move_view_between_cams(Operator):
         # self._handle = bpy.types.SpaceNodeEditor.draw_handler_add(draw_process_callback_px, args, 'WINDOW',
         #                                                           'POST_PIXEL')
         bpy.context.window_manager.modal_handler_add(self)
-        bpy.context.window_manager.mathp_node_anim = True
 
     def offset_view(self, anim_fac):
         fac = anim_fac
