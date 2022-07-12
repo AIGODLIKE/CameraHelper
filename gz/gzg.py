@@ -1,4 +1,5 @@
 import bpy
+import importlib
 from bpy.types import GizmoGroup, SpaceView3D, PropertyGroup
 from .gz_custom import GizmoInfo_2D
 
@@ -85,7 +86,8 @@ class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
         self.gz_add_cam = gz
 
         gz = self.gizmos.new("GIZMO_GT_button_2d")
-        gz.icon = 'EVENT_P'
+        gz.use_event_handle_all = True
+        gz.icon = 'IMAGE_PLANE'
         gz.draw_options = {'BACKDROP', 'OUTLINE'}
         gz.use_tooltip = True
         gz.alpha = .8
@@ -96,7 +98,19 @@ class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
         gz.scale_basis = (80 * 0.35) / 2  # Same as buttons defined in C
 
         props = gz.target_set_operator("camhp.campv_popup")
-        self.gz_add_cam = gz
+        self.gz_cam_pv = gz
+
+    def refresh(self, context):
+        if context.scene.camhp_pv.enable:
+            self.gz_cam_pv.color = 0.08, 0.6, 0.08
+            self.gz_cam_pv.color_highlight = 0.28, 0.8, 0.28
+
+            if context.scene.camhp_pv.pin:
+                self.gz_cam_pv.color = 0.8, 0.2, 0.2
+                self.gz_cam_pv.color_highlight = 1, 0.2, 0.2
+        else:
+            self.gz_cam_pv.color = 0.08, 0.08, 0.08
+            self.gz_cam_pv.color_highlight = 0.28, 0.28, 0.28
 
 
 class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
@@ -199,8 +213,12 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
     def poll(cls, context):
         ob = context.object
         view = context.space_data
-        if ob and ob.type in {'CAMERA',
-                              'EMPTY'} and view.region_3d.view_perspective != 'CAMERA' and not view.region_quadviews:
+        if all((
+                ob,
+                ob.type in {'CAMERA', 'EMPTY'},
+                view.region_3d.view_perspective != 'CAMERA',
+                not view.region_quadviews
+        )):
             return True
         else:
             return False

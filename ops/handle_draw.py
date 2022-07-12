@@ -54,11 +54,23 @@ class CAMHP_OT_campv_popup(bpy.types.Operator):
         return context.space_data.type == 'VIEW_3D'
 
     def invoke(self, context, event):
-        def pop_up(cls, context):
-            layout = cls.layout
-            layout.popover("CAMHP_PT_pop_cam_pv_panel")
+        # print(event.type, event.value)
+        #
+        # def pop_up(cls, context):
+        #     layout = cls.layout
+        #     layout.popover("CAMHP_PT_pop_cam_pv_panel")
 
-        context.window_manager.popup_menu(pop_up, icon='CAMERA_DATA', title='Preview')
+        if event.type == 'LEFTMOUSE':
+            if event.ctrl and not event.shift:
+                context.scene.camhp_pv.pin = False if context.scene.camhp_pv.pin else True
+            elif event.shift and event.ctrl:
+                print('shift')
+                try:
+                    bpy.ops.camhp.pv_snap_shot('INVOKE_DEFAULT')
+                except Exception as e:
+                    print(e)
+            else:
+                context.scene.camhp_pv.enable = False if context.scene.camhp_pv.enable else True
 
         return {'INTERFACE'}
 
@@ -87,8 +99,11 @@ def clear_handle():
 
 
 def is_select_obj(context):
-    return context and context.object and (
-            context.object.type in {'CAMERA', 'EMPTY'})
+    return all((
+        context,
+        context.object,
+        context.object.type in {'CAMERA', 'EMPTY'}
+    ))
 
 
 @persistent
@@ -129,8 +144,6 @@ class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
         buffer = C_INST_CAM_PV.buffer
 
         if buffer:
-            context.scene.camhp_snap_shot_image = True
-
             if f'_SnapShot_{cam.name}' in bpy.data.images:
                 img = bpy.data.images[f'_SnapShot_{cam.name}']
             else:
@@ -146,7 +159,7 @@ class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
                 # set img as area active image
                 context.window.screen.areas[0].spaces[0].image = img
 
-        context.scene.camhp_snap_shot_image = False
+            setattr(C_INST_CAM_PV, 'buffer', None)
 
         return {'FINISHED'}
 

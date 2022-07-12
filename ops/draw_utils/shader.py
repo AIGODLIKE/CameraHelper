@@ -126,14 +126,15 @@ class CameraThumb():
             projection_matrix,
             do_color_management=False)
         gpu.state.depth_mask_set(False)
+        context.space_data.overlay.show_overlays = ori_show_overlay
 
-        if context.scene.camhp_snap_shot_image is True:
-            draw_texture_2d(self.offscreen.texture_color, (10, 10), self.width, self.height)
-            # snap shot
-            framebuffer = gpu.state.active_framebuffer_get()
-            buffer = framebuffer.read_color(10, 10, self.width, self.height, 4, 0, 'FLOAT')
-            buffer.dimensions = self.width * self.height * 4
-            self.buffer = buffer
+        draw_texture_2d(self.offscreen.texture_color, (10, 10), self.width, self.height)
+        # snap shot
+        # if self.buffer is None:
+        framebuffer = gpu.state.active_framebuffer_get()
+        buffer = framebuffer.read_color(10, 10, self.width, self.height, 4, 0, 'FLOAT')
+        buffer.dimensions = self.width * self.height * 4
+        self.buffer = buffer
 
         # restore
         context.space_data.overlay.show_overlays = ori_show_overlay

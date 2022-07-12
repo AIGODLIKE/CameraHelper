@@ -162,8 +162,7 @@ class CAMHP_OT_switch_cam(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        context.window_manager.invoke_search_popup(self)
-        return {'FINISHED'}
+        return context.window_manager.invoke_search_popup(self)
 
 
 class CAMHP_OT_add_view_cam(Operator):
