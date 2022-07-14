@@ -81,12 +81,15 @@ class CameraThumb():
         self.context = context
         self.deps = deps
         self.offscreen = gpu.types.GPUOffScreen(WIDTH, HEIGHT)
-        self.buffer = None
         self.cam = None
+        self.buffer = None
+        self.snapshot = context.scene.camhp_snap_shot_image
 
-        self.height = 200
-        radio = context.scene.render.resolution_x / context.scene.render.resolution_y
-        self.width = int(self.height * radio)
+        self.max_width = get_pref().camera_thumb.max_width
+        self.max_height = get_pref().camera_thumb.max_height
+
+        self.update_cam(context)
+        self.update_resolution(context)
 
     def __call__(self, context):
         self.draw(context)
@@ -96,7 +99,17 @@ class CameraThumb():
             self.draw_border(context)
             self.draw_camera_thumb(context)
 
-    def draw_camera_thumb(self, context):
+    def update_resolution(self, context):
+        max_height = self.max_width
+        max_width = self.max_height
+        self.height = max_height
+        self.ratio = context.scene.render.resolution_x / context.scene.render.resolution_y
+        self.width = int(self.height * self.ratio)
+        if self.width > max_width:
+            self.width = max_width
+            self.height = int(self.width / self.ratio)
+
+    def update_cam(self, context):
         cam = None
 
         if context.scene.camhp_pv.pin:
@@ -106,13 +119,15 @@ class CameraThumb():
 
         self.cam = cam
 
+    def draw_camera_thumb(self, context):
+        self.update_cam(context)
+        self.update_resolution(context)
+
         show_overlay = False
-        # get
         scene = context.scene
-
-        view_matrix = cam.matrix_world.inverted()
-
-        projection_matrix = cam.calc_matrix_camera(self.deps, x=self.width, y=self.height)
+        # matrix
+        view_matrix = self.cam.matrix_world.inverted()
+        projection_matrix = self.cam.calc_matrix_camera(self.deps, x=self.width, y=self.height)
         # set space data
         ori_show_overlay = context.space_data.overlay.show_overlays
         context.space_data.overlay.show_overlays = show_overlay
@@ -129,8 +144,7 @@ class CameraThumb():
         context.space_data.overlay.show_overlays = ori_show_overlay
 
         draw_texture_2d(self.offscreen.texture_color, (10, 10), self.width, self.height)
-        # snap shot
-        # if self.buffer is None:
+
         framebuffer = gpu.state.active_framebuffer_get()
         buffer = framebuffer.read_color(10, 10, self.width, self.height, 4, 0, 'FLOAT')
         buffer.dimensions = self.width * self.height * 4

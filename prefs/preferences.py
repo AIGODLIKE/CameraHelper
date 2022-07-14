@@ -29,6 +29,11 @@ class DrawMotionCurve(PropertyGroup):
     width: IntProperty(name='Width', default=3, min=1, soft_max=5)
 
 
+class CameraThumb(PropertyGroup):
+    max_width: IntProperty(name='Max Width', default=400, min=50, soft_max=800)
+    max_height: IntProperty(name='Max Height', default=300, min=50, soft_max=600)
+
+
 class CAMHP_Preference(bpy.types.AddonPreferences):
     bl_idname = __ADDON_NAME__
 
@@ -41,6 +46,8 @@ class CAMHP_Preference(bpy.types.AddonPreferences):
     gz_motion_source: PointerProperty(type=GizmoMotionSource)
 
     draw_motion_curve: PointerProperty(type=DrawMotionCurve)
+
+    camera_thumb: PointerProperty(type=CameraThumb)
 
     def draw(self, context):
         layout = self.layout
@@ -74,6 +81,11 @@ class CAMHP_Preference(bpy.types.AddonPreferences):
         box.label(text='Motion Curve', icon='CURVE_DATA')
         box.prop(self.draw_motion_curve, 'color')
         box.prop(self.draw_motion_curve, 'width', slider=True)
+
+        box = col.box().column(align=True)
+        box.label(text='Camera Thumbnails', icon='CAMERA_DATA')
+        box.prop(self.camera_thumb, 'max_width', slider=True)
+        box.prop(self.camera_thumb, 'max_height', slider=True)
 
     def draw_keymap(self, context, layout):
         col = layout.box().column()
@@ -113,11 +125,13 @@ def register():
     bpy.utils.register_class(GizmoMotionCamera)
     bpy.utils.register_class(GizmoMotionSource)
     bpy.utils.register_class(DrawMotionCurve)
+    bpy.utils.register_class(CameraThumb)
     bpy.utils.register_class(CAMHP_Preference)
 
 
 def unregister():
     bpy.utils.unregister_class(CAMHP_Preference)
     bpy.utils.unregister_class(GizmoMotionCamera)
+    bpy.utils.unregister_class(CameraThumb)
     bpy.utils.unregister_class(GizmoMotionSource)
     bpy.utils.unregister_class(DrawMotionCurve)

@@ -45,7 +45,7 @@ class CAMHP_PT_pop_cam_pv_panel(pop_cam_panel):
 
 
 class CAMHP_OT_campv_popup(bpy.types.Operator):
-    """Preview"""
+    """Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera"""
     bl_idname = "camhp.campv_popup"
     bl_label = "Preview"
 
@@ -64,11 +64,7 @@ class CAMHP_OT_campv_popup(bpy.types.Operator):
             if event.ctrl and not event.shift:
                 context.scene.camhp_pv.pin = False if context.scene.camhp_pv.pin else True
             elif event.shift and event.ctrl:
-                print('shift')
-                try:
-                    bpy.ops.camhp.pv_snap_shot('INVOKE_DEFAULT')
-                except Exception as e:
-                    print(e)
+                bpy.ops.camhp.pv_snap_shot()
             else:
                 context.scene.camhp_pv.enable = False if context.scene.camhp_pv.enable else True
 
@@ -98,12 +94,25 @@ def clear_handle():
         C_INST_CAM_PV = None
 
 
+def add_handle(context, depsgraph):
+    global C_HANDLE_CURVE, C_HANDLE_CAM_PV
+    global C_INST_CURVE, C_INST_CAM_PV
+
+    if C_HANDLE_CURVE is None:
+        C_INST_CURVE = CameraMotionPath(context, depsgraph)
+        C_HANDLE_CURVE = SpaceView3D.draw_handler_add(C_INST_CURVE, (context,), 'WINDOW', 'POST_VIEW')
+
+    if C_HANDLE_CAM_PV is None:
+        C_INST_CAM_PV = CameraThumb(context, depsgraph)
+        C_HANDLE_CAM_PV = SpaceView3D.draw_handler_add(C_INST_CAM_PV, (context,), 'WINDOW', 'POST_PIXEL')
+
+
 def is_select_obj(context):
-    return all((
-        context,
-        context.object,
+    return (
+        context and
+        context.object and
         context.object.type in {'CAMERA', 'EMPTY'}
-    ))
+    )
 
 
 @persistent
@@ -114,15 +123,7 @@ def draw_handle(scene, depsgraph):
     context = bpy.context
 
     if is_select_obj(context):
-
-        if C_HANDLE_CURVE is None:
-            C_INST_CURVE = CameraMotionPath(context, depsgraph)
-            C_HANDLE_CURVE = SpaceView3D.draw_handler_add(C_INST_CURVE, (context,), 'WINDOW', 'POST_VIEW')
-
-        if C_HANDLE_CAM_PV is None:
-            C_INST_CAM_PV = CameraThumb(context, depsgraph)
-            C_HANDLE_CAM_PV = SpaceView3D.draw_handler_add(C_INST_CAM_PV, (context,), 'WINDOW', 'POST_PIXEL')
-
+        add_handle(context, depsgraph)
     else:
         clear_handle()
 
@@ -134,32 +135,49 @@ class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return C_INST_CAM_PV is not None
+        return C_INST_CAM_PV
+
+    def invoke(self, context, event):
+        context.scene.camhp_snap_shot_image = True
+        return self.execute(context)
 
     def execute(self, context):
-
-        cam = C_INST_CAM_PV.cam
         self.width = C_INST_CAM_PV.width
         self.height = C_INST_CAM_PV.height
+
+        cam = C_INST_CAM_PV.cam
         buffer = C_INST_CAM_PV.buffer
 
-        if buffer:
-            if f'_SnapShot_{cam.name}' in bpy.data.images:
-                img = bpy.data.images[f'_SnapShot_{cam.name}']
-            else:
-                img = bpy.data.images.new(name=f'_SnapShot_{cam.name}',
-                                          width=self.width,
-                                          height=self.height)
+        if f'_SnapShot_{cam.name}' in bpy.data.images:
+            img = bpy.data.images[f'_SnapShot_{cam.name}']
+        else:
+            img = bpy.data.images.new(name=f'_SnapShot_{cam.name}',
+                                      width=self.width,
+                                      height=self.height)
 
-            img.scale(self.width, self.height)
+        img.scale(self.width, self.height)
+        try:
             img.pixels.foreach_set(buffer)
+        except TypeError as e:
+            print(e)
+            return {'CANCELLED'}
+        # set resolution
+        ori_width = context.scene.render.resolution_x
+        ori_height = context.scene.render.resolution_y
+        context.scene.render.resolution_x = self.width
+        context.scene.render.resolution_y = self.height
 
-            bpy.ops.render.view_show('INVOKE_DEFAULT')
-            if context.window.screen.areas[0].type == 'IMAGE_EDITOR':
-                # set img as area active image
-                context.window.screen.areas[0].spaces[0].image = img
+        bpy.ops.render.view_show('INVOKE_DEFAULT')
+        if context.window.screen.areas[0].type == 'IMAGE_EDITOR':
+            # set img as area active image
+            context.window.screen.areas[0].spaces[0].image = img
 
-            setattr(C_INST_CAM_PV, 'buffer', None)
+        # restore
+        context.scene.render.resolution_x = ori_width
+        context.scene.render.resolution_y = ori_height
+
+        context.scene.camhp_snap_shot_image = False
+        self.report({'INFO'}, f'Snap Shot')
 
         return {'FINISHED'}
 

@@ -9,5 +9,9 @@
   "Motion Curve": "运动曲线",
   "Bake Motion Camera": "烘焙运动相机",
   "Pin Selected Camera": "固定选中相机",
+  "Max Width": "最大宽度",
+  "Max Height": "最大高度",
+  "Camera Thumbnails": "相机缩略图",
+  "Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera": "相机缩略图\n左键点击: 启用\nCtrl: 固定选中相机",
   "Camera Helper": "相机助手"
 }

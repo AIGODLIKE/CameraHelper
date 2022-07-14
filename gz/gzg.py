@@ -112,6 +112,8 @@ class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
             self.gz_cam_pv.color = 0.08, 0.08, 0.08
             self.gz_cam_pv.color_highlight = 0.28, 0.28, 0.28
 
+        context.area.tag_redraw()
+
 
 class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
     bl_idname = "CAMHP_UI_cam_view"
@@ -213,12 +215,12 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
     def poll(cls, context):
         ob = context.object
         view = context.space_data
-        if all((
-                ob,
-                ob.type in {'CAMERA', 'EMPTY'},
-                view.region_3d.view_perspective != 'CAMERA',
+        if (
+                ob and
+                ob.type in {'CAMERA', 'EMPTY'} and
+                view.region_3d.view_perspective != 'CAMERA' and
                 not view.region_quadviews
-        )):
+        ):
             return True
         else:
             return False
