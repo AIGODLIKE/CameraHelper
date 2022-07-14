@@ -8,6 +8,7 @@ import numpy as np
 import bpy
 
 from ..prefs.get_pref import get_pref
+from ..ops.op_motion_cam import get_obj_2d_loc
 
 
 class GizmoInfo_2D():
@@ -180,9 +181,24 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
                 value = abs(1 - value)
             elif value < 0:
                 value = abs(value + 1)
-        # 反向控制
-        if event.ctrl:
-            value = 1 - value
+
+        # 从3d位置获取屏幕位置
+        x, y = get_obj_2d_loc(context.object, context)
+
+        start_cam = context.object.motion_cam.list[0]
+        end_cam = context.object.motion_cam.list[1]
+
+        # 比较开始结束相机的屏幕位置以决定是否反向
+        if start_cam.camera and end_cam.camera:
+            start_x, start_y = get_obj_2d_loc(start_cam.camera, context)
+            end_x, end_y = get_obj_2d_loc(end_cam.camera, context)
+
+            if end_x > start_x:
+                value = 1 - value
+
+        # # 反向控制
+        # if event.ctrl:
+        #     value = 1 - value
 
         self.target_set_value("offset", value)
         context.area.header_text_set(f"Move: {value:.4f}")
