@@ -145,7 +145,8 @@ class CAMHP_OT_switch_cam(Operator):
             if obj.type != 'CAMERA': continue
 
             if obj is context.scene.camera:
-                enum_items.insert(0, (obj.name, obj.name, '', 'VIEW_CAMERA', i))
+                # enum_items.insert(0, (obj.name, obj.name, '', 'VIEW_CAMERA', i))
+                enum_items.append((obj.name, obj.name, '', 'VIEW_CAMERA', i))
             else:
                 enum_items.append((obj.name, obj.name, '', 'DOT', i))
 
@@ -162,7 +163,8 @@ class CAMHP_OT_switch_cam(Operator):
         return {'FINISHED'}
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_search_popup(self)
+        context.window_manager.invoke_search_popup(self)
+        return {'FINISHED'}
 
 
 class CAMHP_OT_add_view_cam(Operator):
