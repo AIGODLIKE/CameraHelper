@@ -42,13 +42,13 @@ class GizmoGroupBase:
                     start_x -= region.width
                 elif region.type == 'HEADER':
                     start_y -= region.height
-                    break
+
         # 检查是否开启坐标轴
         if context.preferences.view.mini_axis_type == 'MINIMAL':
             size = context.preferences.view.mini_axis_size * ui_scale * 2  # 获取实际尺寸 此尺寸需要乘2
-            start_y -= size  + step * 2  #
+            start_y -= size + step * 2  #
         elif context.preferences.view.mini_axis_type == 'GIZMO':
-            size = context.preferences.view.gizmo_size_navigate_v3d * ui_scale  * 1.2 # 获取实际尺寸 此尺寸需要乘1.2
+            size = context.preferences.view.gizmo_size_navigate_v3d * ui_scale * 1.2  # 获取实际尺寸 此尺寸需要乘1.2
             start_y -= size + step * 2  #
         elif context.preferences.view.mini_axis_type == 'NONE':
             start_y -= step * 2
