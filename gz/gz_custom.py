@@ -176,12 +176,6 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
 
         value = self.init_value - delta / 1000
 
-        if get_pref().gz_motion_camera.loop:
-            if value > 1:
-                value = abs(1 - value)
-            elif value < 0:
-                value = abs(value + 1)
-
         # 从3d位置获取屏幕位置
         x, y = get_obj_2d_loc(context.object, context)
 
@@ -194,17 +188,23 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
             end_x, end_y = get_obj_2d_loc(end_cam.camera, context)
 
             if end_x > start_x:
-                value = 1 - value
+                value = self.init_value + delta / 1000
 
-        # # 反向控制
-        # if event.ctrl:
-        #     value = 1 - value
+        # loop
+        if get_pref().gz_motion_camera.loop:
+            if value > 1:
+                value = abs(1 - value)
+            elif value < 0:
+                value = abs(value + 1)
 
         self.target_set_value("offset", value)
         context.area.header_text_set(f"Move: {value:.4f}")
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
+        self.init_mouse = self._projected_value(context, event)
+        self.init_value = self.target_get_value("offset")
+
         if event.ctrl:
             def pop_up(cls, context):
                 layout = cls.layout
