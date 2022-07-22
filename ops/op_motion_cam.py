@@ -192,6 +192,11 @@ def gen_cam_path(self, context):
         const.use_fixed_location = True
         const.target = path
 
+        try:
+            const.driver_remove('offset_factor')
+        except:
+            pass
+
         d = const.driver_add('offset_factor')
         d.driver.type = 'AVERAGE'
 
@@ -316,7 +321,9 @@ class MotionCamAffectCustomProp(PropertyGroup):
 
 class MotionCamAffect(PropertyGroup):
     enable: BoolProperty(name='Enable', default=True, update=update_driver, options={'HIDDEN'}, )
+
     use_euler: BoolProperty(name='Rotation', default=True, options={'HIDDEN'})
+
     use_lens: BoolProperty(name='Focal Length', default=True, options={'HIDDEN'})
     use_focus_distance: BoolProperty(name='Focus Distance', default=True, options={'HIDDEN'})
     use_aperture_fstop: BoolProperty(name='F-Stop', default=True, options={'HIDDEN'})
