@@ -1,6 +1,8 @@
 import bpy
 import importlib
+from mathutils import Vector
 from bpy.types import GizmoGroup, SpaceView3D, PropertyGroup
+
 from .gz_custom import GizmoInfo_2D
 
 
@@ -319,7 +321,11 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
         # 矫正位置
         if self.gz_motion_cam:
             self.gz_motion_cam.matrix_basis = context.object.matrix_world.normalized()
-            self.gz_motion_cam.matrix_basis.col[3][2] += 0.5
+            z = Vector((0, 0, 1))
+            norm = z
+            norm.rotate(context.object.matrix_world.to_euler('XYZ'))
+            self.gz_motion_cam.matrix_basis.translation -= norm * context.object.motion_cam.offset_factor  # 修复偏移
+            self.gz_motion_cam.matrix_basis.translation += z  # 向z移动
 
         context.area.tag_redraw()
 
