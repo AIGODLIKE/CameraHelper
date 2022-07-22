@@ -90,6 +90,9 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
     """
     affect = tg_obj.motion_cam.affect
     use_euler = affect.use_euler
+
+    use_sub_camera = affect.use_sub_camera
+
     use_lens = affect.use_lens
     use_aperture_fstop = affect.use_aperture_fstop
     use_focus_distance = affect.use_focus_distance
@@ -97,20 +100,31 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
     # 限定变化, 位置变化由曲线约束
     if use_euler:
         tg_obj.rotation_euler = get_interpolate_euler(from_obj, to_obj, fac)
+    # 子级为相机
+    if use_sub_camera and len(tg_obj.children) > 0 and tg_obj.children[0].type == 'CAMERA':
+        cam = tg_obj.children[0]
+    elif tg_obj.type == 'CAMERA':
+        cam = tg_obj
+    else:
+        cam = None
 
+    if cam is None: return
+
+    # 相机变化
     if from_obj.type == to_obj.type == 'CAMERA':
+        # is_sub_camera
         if use_lens:
-            tg_obj.data.lens = get_interpolate_lens(from_obj, to_obj, fac)
+            cam.data.lens = get_interpolate_lens(from_obj, to_obj, fac)
         if use_aperture_fstop:
-            tg_obj.data.dof.aperture_fstop = get_interpolate_fstop(from_obj, to_obj, fac)
-        if use_focus_distance and tg_obj.data.dof.use_dof:
-            tg_obj.data.dof.focus_distance = get_interpolate_focal(from_obj, to_obj, fac)
+            cam.data.dof.aperture_fstop = get_interpolate_fstop(from_obj, to_obj, fac)
+        if use_focus_distance and cam.data.dof.use_dof:
+            cam.data.dof.focus_distance = get_interpolate_focal(from_obj, to_obj, fac)
 
     # 自定义
     for item in affect.custom_props:
         if item.data_path == '': continue
 
-        src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
+        src_obj, src_attr = parse_data_path(cam.data, item.data_path)
         _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
         _to_obj, to_attr = parse_data_path(to_obj.data, item.data_path)
         if from_attr is None or to_attr is None or src_attr is None: continue
@@ -146,7 +160,10 @@ def gen_cam_path(self, context):
         obj = self.id_data
         cam_list = list()
         for item in obj.motion_cam.list:
-            cam_list.append(item.camera)
+            if item.camera is not None:
+                cam_list.append(item.camera)
+
+        if len(cam_list) < 2: return
 
         cam_pts = [cam.matrix_world.translation for cam in cam_list]
         path = gen_bezier_curve_from_points(coords=cam_pts,
@@ -323,6 +340,8 @@ class MotionCamAffect(PropertyGroup):
     enable: BoolProperty(name='Enable', default=True, update=update_driver, options={'HIDDEN'}, )
 
     use_euler: BoolProperty(name='Rotation', default=True, options={'HIDDEN'})
+    # search for sub camera
+    use_sub_camera: BoolProperty(name='Sub Camera', default=False, options={'HIDDEN'})
 
     use_lens: BoolProperty(name='Focal Length', default=True, options={'HIDDEN'})
     use_focus_distance: BoolProperty(name='Focus Distance', default=True, options={'HIDDEN'})
@@ -594,11 +613,20 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         # 创建相机
         cam_data = bpy.data.cameras.new(name='Camera')
         cam = bpy.data.objects.new('Camera', cam_data)
+        empty = bpy.data.objects.new('Empty', None)
+
         context.collection.objects.link(cam)
+        context.collection.objects.link(empty)
         # 设置
         cam.data.show_name = True
         cam.name = 'Motion Camera'
-        self.cam = cam
+        cam.parent = empty
+
+        empty.name = 'Motion Control'
+        empty.motion_cam.affect.use_sub_camera = True
+        # empty.empty_display_type = 'CUBE'
+
+        self.cam = empty
 
     def add_motion_cam(self, obj):
         item = self.cam.motion_cam.list.add()
@@ -668,17 +696,28 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
                 ob.keyframe_insert('rotation_euler')
 
             if context.object.type == 'CAMERA':
+                cam = context.object
+            elif (context.object.motion_cam.use_sub_camera and
+                  len(context.object.children) > 0 and
+                  context.object.children[0].type == 'CAMERA'):
+
+                cam = context.object.children[0]
+            else:
+                cam = None
+
+            if cam:
                 if affect.use_lens:
-                    ob.data.lens = context.object.data.lens
+                    ob.data.lens = cam.data.lens
                     ob.data.keyframe_insert('lens')
 
                 if affect.use_focus_distance:
-                    ob.data.dof.focus_distance = context.object.data.dof.focus_distance
+                    ob.data.dof.focus_distance = cam.data.dof.focus_distance
                     ob.data.dof.keyframe_insert('focus_distance')
 
                 if affect.use_aperture_fstop:
-                    ob.data.dof.aperture_fstop = context.object.dof.data.aperture_fstop
+                    ob.data.dof.aperture_fstop = cam.dof.data.aperture_fstop
                     ob.data.dof.keyframe_insert('aperture_fstop')
+
             # 自定义属性
             for item in affect.custom_props:
                 if item.data_path == '': continue
@@ -800,16 +839,31 @@ class CAMHP_PT_MotionCamPanel(Panel):
         col.separator()
 
         col.prop(affect, 'use_euler')
-        col.prop(affect, 'use_lens')
 
-        col.separator()
+        col.prop(affect, 'use_sub_camera')
 
-        box = col.box().column(align=True)
+        sub = col.column()
+        sub.active = False
+        if context.object.type != 'CAMERA':
+            if len(context.object.children) != 0:
+                if context.object.children[0].type == 'CAMERA':
+                    sub.active = affect.use_sub_camera
+                    warn = sub.column()
+                    warn.alert = True
+                    warn.label(text='There is no camera as child of this object')
+        else:
+            sub.active = True
+
+        sub.prop(affect, 'use_lens')
+
+        sub.separator()
+
+        box = sub.box().column(align=True)
         box.label(text='Depth of Field')
         box.prop(affect, 'use_focus_distance')
         box.prop(affect, 'use_aperture_fstop')
 
-        box = col.box().column(align=True)
+        box = sub.box().column(align=True)
         box.label(text='Custom Properties')
         box.separator()
 

@@ -7,6 +7,8 @@
   "Sync to Selected": "同步到选中项",
   "Draw Modal": "模态绘制",
   "Motion Curve": "运动曲线",
+  "Sub Camera": "子级相机",
+  "There is no camera object as child of this object": "此对象子级中没有相机物体",
   "Bake Motion Camera": "烘焙运动相机",
   "Pin Selected Camera": "固定选中相机",
   "Max Width": "最大宽度",
