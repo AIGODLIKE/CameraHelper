@@ -93,7 +93,7 @@ class BL_UI_Widget:
         y = event.mouse_region_y
 
         if(event.type == 'LEFTMOUSE'):
-            print(event.type,event.value )
+            # print(event.type,event.value )
             if(event.value == 'PRESS'):
                 self._mouse_down = True
                 return self.mouse_down(x, y)

@@ -176,9 +176,6 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
 
         value = self.init_value - delta / 1000
 
-        # 从3d位置获取屏幕位置
-        x, y = get_obj_2d_loc(context.object, context)
-
         start_cam = context.object.motion_cam.list[0]
         end_cam = context.object.motion_cam.list[1]
 
@@ -196,6 +193,11 @@ class CAMHP_GT_custom_move_1d(GizmoBase, Gizmo):
                 value = abs(1 - value)
             elif value < 0:
                 value = abs(value + 1)
+        else:
+            if value > 1:
+                value = 1
+            elif value < 0:
+                value = 0
 
         self.target_set_value("offset", value)
         context.area.header_text_set(f"Move: {value:.4f}")
