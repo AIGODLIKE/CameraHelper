@@ -100,14 +100,16 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
     # 限定变化, 位置变化由曲线约束
     if use_euler:
         tg_obj.rotation_euler = get_interpolate_euler(from_obj, to_obj, fac)
+
     # 子级为相机
-    if use_sub_camera and len(tg_obj.children) > 0 and tg_obj.children[0].type == 'CAMERA':
-        cam = tg_obj.children[0]
+    if use_sub_camera and affect.sub_camera and affect.sub_camera.type == 'CAMERA':
+        cam = affect.sub_camera
     elif tg_obj.type == 'CAMERA':
         cam = tg_obj
     else:
         cam = None
 
+    print(cam)
     if cam is None: return
 
     # 相机变化
@@ -262,7 +264,7 @@ def set_offset_factor(self, value):
     if obj.motion_cam.affect.enable is False:
         return
 
-        # 防止移动帧时的无限触发更新
+    # 防止移动帧时的无限触发更新
     if hasattr(bpy.context, 'active_operator'):
         if bpy.context.active_operator == getattr(getattr(bpy.ops, 'transform'), 'transform'): return
 
@@ -342,6 +344,7 @@ class MotionCamAffect(PropertyGroup):
     use_euler: BoolProperty(name='Rotation', default=True, options={'HIDDEN'})
     # search for sub camera
     use_sub_camera: BoolProperty(name='Sub Camera', default=False, options={'HIDDEN'})
+    sub_camera: PointerProperty(type=bpy.types.Object)
 
     use_lens: BoolProperty(name='Focal Length', default=True, options={'HIDDEN'})
     use_focus_distance: BoolProperty(name='Focus Distance', default=True, options={'HIDDEN'})
@@ -540,7 +543,7 @@ from .draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
 from .draw_utils.bl_ui_label import BL_UI_Label
 
 from bpy_extras.view3d_utils import location_3d_to_region_2d
-
+from bpy.app.translations import pgettext_iface as tip_
 
 def get_obj_2d_loc(obj, context):
     r3d = context.space_data.region_3d
@@ -572,12 +575,16 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         # self.btn_close.set_mouse_down(self.finish, None)
 
         self.label_tip1 = BL_UI_Label(20, 120, 40, 50)
-        self.label_tip1.text = "左键->相机名字以添加源"
+        self.label_tip1.text = tip_('Left Click->Camera Name to Add Source')
         self.label_tip1.text_size = 22
 
-        self.label_tip2 = BL_UI_Label(20, 100, 40, 50)
-        self.label_tip2.text = "右键->结束添加模式"
+        self.label_tip2 = BL_UI_Label(20, 95, 40, 50)
+        self.label_tip2.text = tip_('Right Click->End Add Mode')
         self.label_tip2.text_size = 22
+
+        self.label_tip3 = BL_UI_Label(20, 70, 40, 50)
+        self.label_tip3.text = tip_('ESC->Cancel')
+        self.label_tip3.text_size = 22
 
         # 为每个相机添加一个按钮
         for obj in bpy.context.view_layer.objects:
@@ -598,7 +605,7 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
             self.buttons.append(btn)
 
     def on_invoke(self, context, event):
-        widgets_panel = [self.label_tip1, self.label_tip2]
+        widgets_panel = [self.label_tip1, self.label_tip2,self.label_tip3]
         widgets = [self.panel]
         widgets += widgets_panel
 
@@ -624,6 +631,7 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
 
         empty.name = 'Motion Control'
         empty.motion_cam.affect.use_sub_camera = True
+        empty.motion_cam.affect.sub_camera = cam
         # empty.empty_display_type = 'CUBE'
 
         self.cam = empty
@@ -667,8 +675,23 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
         m_cam = context.object.motion_cam
         affect = m_cam.affect
 
-        name = context.object.name + '_bake'
-        data_name = context.object.data.name + '_bake'
+        if context.object.type == 'CAMERA':
+            cam = context.object
+        elif (affect.use_sub_camera and
+              affect.sub_camera  and
+              affect.sub_camera.type == 'CAMERA'):
+
+            cam = affect.sub_camera
+        else:
+            cam = None
+
+        if cam is None:
+            self.report({'ERROR'}, "No camera found")
+            return {'CANCELLED'}
+
+        name = cam.name + '_bake'
+        data_name = cam.data.name + '_bake'
+
         cam_data = bpy.data.cameras.new(name=data_name)
         ob = bpy.data.objects.new(name, cam_data)
         ob.constraints.clear()
@@ -681,6 +704,7 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
             context.view_layer.update()
             matrix = context.object.matrix_world
 
+            # 位置
             loc = matrix.to_translation()
             ob.location = loc
             ob.keyframe_insert('location')
@@ -695,28 +719,20 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
                 ob.rotation_euler = euler_prev
                 ob.keyframe_insert('rotation_euler')
 
-            if context.object.type == 'CAMERA':
-                cam = context.object
-            elif (context.object.motion_cam.use_sub_camera and
-                  len(context.object.children) > 0 and
-                  context.object.children[0].type == 'CAMERA'):
+            if not cam: continue
 
-                cam = context.object.children[0]
-            else:
-                cam = None
+            # 相机数值
+            if affect.use_lens:
+                ob.data.lens = cam.data.lens
+                ob.data.keyframe_insert('lens')
 
-            if cam:
-                if affect.use_lens:
-                    ob.data.lens = cam.data.lens
-                    ob.data.keyframe_insert('lens')
+            if affect.use_focus_distance:
+                ob.data.dof.focus_distance = cam.data.dof.focus_distance
+                ob.data.dof.keyframe_insert('focus_distance')
 
-                if affect.use_focus_distance:
-                    ob.data.dof.focus_distance = cam.data.dof.focus_distance
-                    ob.data.dof.keyframe_insert('focus_distance')
-
-                if affect.use_aperture_fstop:
-                    ob.data.dof.aperture_fstop = cam.dof.data.aperture_fstop
-                    ob.data.dof.keyframe_insert('aperture_fstop')
+            if affect.use_aperture_fstop:
+                ob.data.dof.aperture_fstop = cam.data.dof.aperture_fstop
+                ob.data.dof.keyframe_insert('aperture_fstop')
 
             # 自定义属性
             for item in affect.custom_props:
@@ -841,16 +857,16 @@ class CAMHP_PT_MotionCamPanel(Panel):
         col.prop(affect, 'use_euler')
 
         col.prop(affect, 'use_sub_camera')
+        col.prop(affect, 'sub_camera', text='')
 
         sub = col.column()
         sub.active = False
         if context.object.type != 'CAMERA':
-            if len(context.object.children) != 0:
-                if context.object.children[0].type == 'CAMERA':
-                    sub.active = affect.use_sub_camera
-                    warn = sub.column()
-                    warn.alert = True
-                    warn.label(text='There is no camera as child of this object')
+            if affect.sub_camera is None or affect.sub_camera.type != 'CAMERA':
+                sub.active = affect.use_sub_camera
+                warn = sub.column()
+                warn.alert = True
+                warn.label(text='There is no camera as child of this object')
         else:
             sub.active = True
 

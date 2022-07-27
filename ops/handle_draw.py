@@ -109,9 +109,10 @@ def add_handle(context, depsgraph):
 
 def is_select_obj(context):
     return (
-        context and
-        context.object and
-        context.object.type in {'CAMERA', 'EMPTY'}
+            context and
+            hasattr(context, 'object') and
+            context.object and
+            context.object.type in {'CAMERA', 'EMPTY'}
     )
 
 

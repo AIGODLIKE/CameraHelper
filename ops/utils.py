@@ -60,11 +60,14 @@ def get_mesh_obj_attrs(context, obj, deps=None) -> dict:
     attr_dict = dict()
 
     depsg_eval = deps if deps else context.evaluated_depsgraph_get()  # deps 由外部传入，防止冻结
+    depsg_eval.update()
     obj_eval = obj.evaluated_get(depsg_eval)
 
     for name, attr in obj_eval.data.attributes.items():
         attr_data = attr.data
         attr_dict[name] = [v.value for v in attr_data.values()]
+
+    print(attr_dict)
 
     return attr_dict
 

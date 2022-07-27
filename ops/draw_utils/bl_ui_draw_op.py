@@ -69,7 +69,7 @@ class BL_UI_OT_draw_operator(Operator):
         if self.handle_widget_events(event):
             return {'RUNNING_MODAL'}
 
-        if event.type in {"ESC", "RIGHTMOUSE"} and event.value == 'PRESS':
+        if event.type in {"RIGHTMOUSE"} and event.value == 'PRESS':
             self.finish()
 
         elif event.type in {"MIDDLEMOUSE", "WHEELUPMOUSE", "WHEELDOWNMOUSE"}:
