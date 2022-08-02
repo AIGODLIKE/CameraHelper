@@ -1,6 +1,6 @@
 import bpy
-import importlib
-from mathutils import Vector
+import math
+from mathutils import Vector, Euler, Matrix
 from bpy.types import GizmoGroup, SpaceView3D, PropertyGroup
 
 from .gz_custom import GizmoInfo_2D
@@ -203,7 +203,8 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
         self.add_gz_lock(context)
 
 
-from .gz_custom import CAMHP_GT_custom_move_3d, CAMHP_GT_custom_move_1d, CAMHP_OT_insert_keyframe
+from .gz_custom import CAMHP_GT_custom_move_3d, CAMHP_GT_custom_move_1d, CAMHP_GT_custom_rotate_1d
+from .gz_custom import CAMHP_OT_insert_keyframe, CAMHP_OT_rotate_object
 from ..prefs.get_pref import get_pref
 
 
@@ -213,6 +214,9 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
     bl_options = {'3D', 'PERSISTENT'}
 
     _move_gz = dict()
+    _rotate_gz = dict()
+    _gz_axis = dict()
+
     cam_list = list()
 
     @classmethod
@@ -266,34 +270,93 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
         for gz in self._move_gz.keys():
             self.gizmos.remove(gz)
 
+        for gz in self._rotate_gz.keys():
+            self.gizmos.remove(gz)
+
         self._move_gz.clear()
+        self._rotate_gz.clear()
+        self._gz_axis.clear()
 
         for index, item in enumerate(context.object.motion_cam.list):
             item = context.object.motion_cam.list[index]
 
-            gz = self.gizmos.new("CAMHP_GT_custom_move_3d")
-            gz._index = index
-            gz._camera = item.camera
+            self.add_move_gz(index, item)
 
-            gz.target_set_prop('offset', item.camera, 'location')
-            # gz.target_set_handler(
-            #     "offset",
-            #     get=props.get_value,
-            #     set=props.set_value,
-            # )
-            gz.use_tooltip = True
-            gz.use_event_handle_all = True
+            self.add_rotate_gz(item, 'X')
+            self.add_rotate_gz(item, 'Y')
+            self.add_rotate_gz(item, 'Z')
 
-            pref_gz = get_pref().gz_motion_source
-            gz.alpha = pref_gz.color[3]
-            gz.color = pref_gz.color[:3]
-            gz.color_highlight = pref_gz.color_highlight[:3]
-            gz.alpha_highlight = pref_gz.color_highlight[3]
+        self.correct_rotate_gz_euler()
 
-            gz.use_draw_modal = True
-            gz.use_draw_scale = False
+    def correct_rotate_gz_euler(self):
+        for gz, axis in self._gz_axis.items():
+            if axis == 'X':
+                rotate = Euler((0, math.radians(90), 0), 'XYZ')
 
-            self._move_gz[gz] = item.camera
+            elif axis == 'Y':
+                rotate = Euler((math.radians(90), 0, 0), 'XYZ')
+
+            else:
+                rotate = Euler((0, 0, math.radians(90)), 'XYZ')
+
+            cam = self._rotate_gz[gz]
+
+            rotate.rotate(cam.matrix_world.to_euler('XYZ'))
+            gz.matrix_basis = rotate.to_matrix().to_4x4()
+            gz.matrix_basis.translation = cam.matrix_world.translation
+
+    def add_rotate_gz(self, item, axis='Z'):
+        # rotate gz
+        gz = self.gizmos.new("GIZMO_GT_dial_3d")
+
+        prop = gz.target_set_operator(CAMHP_OT_rotate_object.bl_idname)
+        prop.obj_name = item.camera.name
+        prop.axis = axis
+
+        gz.use_tooltip = True
+        gz.use_event_handle_all = True
+
+        gz.use_draw_modal = True
+        gz.use_draw_scale = False
+
+        # red, green, blue for X Y Z axis
+        gz.alpha = 0.8
+        gz.alpha_highlight = 1
+
+        if axis == 'X':
+            gz.color = 0.5, 0, 0
+            gz.color_highlight = 0.8, 0, 0
+        elif axis == 'Y':
+            gz.color = 0, 0.5, 0
+            gz.color_highlight = 0, 0.8, 0
+        elif axis == 'Z':
+            gz.color = 0, 0, 0.5
+            gz.color_highlight = 0, 0, 0.8
+
+        self._rotate_gz[gz] = item.camera
+        self._gz_axis[gz] = axis
+
+    def add_move_gz(self, index, item):
+        # move gz
+        gz = self.gizmos.new("CAMHP_GT_custom_move_3d")
+        gz._index = index
+        gz._camera = item.camera
+
+        gz.target_set_prop('offset', item.camera, 'location')
+
+        gz.use_tooltip = True
+        gz.use_event_handle_all = True
+
+        pref_gz = get_pref().gz_motion_source
+        gz.alpha = pref_gz.color[3]
+        gz.color = pref_gz.color[:3]
+        gz.color_highlight = pref_gz.color_highlight[:3]
+        gz.alpha_highlight = pref_gz.color_highlight[3]
+
+        gz.use_draw_modal = True
+        gz.use_draw_scale = False
+
+        self._move_gz[gz] = item.camera
 
     def refresh(self, context):
         # print("CamHp::refresh")
@@ -313,12 +376,16 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
                 for gz in self._move_gz.keys():
                     self.gizmos.remove(gz)
 
+                for gz in self._rotate_gz.keys():
+                    self.gizmos.remove(gz)
+
                 self._move_gz.clear()
+                self._rotate_gz.clear()
 
         elif self.gz_motion_cam is None or update_gz:
             self.add_motion_cam_gz(context)
 
-        # 矫正位置
+        # 矫正位置 move gizmo
         if self.gz_motion_cam:
             self.gz_motion_cam.matrix_basis = context.object.matrix_world.normalized()
             z = Vector((0, 0, 1))
@@ -327,6 +394,10 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
             self.gz_motion_cam.matrix_basis.translation -= norm * context.object.motion_cam.offset_factor  # 修复偏移
             self.gz_motion_cam.matrix_basis.translation += z  # 向z移动
 
+        # 矫正位置 rotate gizmo
+        if self.gz_motion_cam:
+            self.correct_rotate_gz_euler()
+
         context.area.tag_redraw()
 
 
@@ -334,8 +405,10 @@ def register():
     bpy.utils.register_class(CAMHP_UI_persp_view)
     bpy.utils.register_class(CAMHP_UI_cam_view)
     bpy.utils.register_class(CAMHP_OT_insert_keyframe)
+    bpy.utils.register_class(CAMHP_OT_rotate_object)
     bpy.utils.register_class(CAMHP_GT_custom_move_1d)
     bpy.utils.register_class(CAMHP_GT_custom_move_3d)
+    bpy.utils.register_class(CAMHP_GT_custom_rotate_1d)
     bpy.utils.register_class(CAMHP_UI_motion_curve_gz)
 
 
@@ -343,6 +416,8 @@ def unregister():
     bpy.utils.unregister_class(CAMHP_UI_persp_view)
     bpy.utils.unregister_class(CAMHP_UI_cam_view)
     bpy.utils.unregister_class(CAMHP_OT_insert_keyframe)
+    bpy.utils.unregister_class(CAMHP_OT_rotate_object)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_1d)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_3d)
+    bpy.utils.register_class(CAMHP_GT_custom_rotate_1d)
     bpy.utils.unregister_class(CAMHP_UI_motion_curve_gz)

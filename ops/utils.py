@@ -67,7 +67,7 @@ def get_mesh_obj_attrs(context, obj, deps=None) -> dict:
         attr_data = attr.data
         attr_dict[name] = [v.value for v in attr_data.values()]
 
-    print(attr_dict)
+    # print(attr_dict)
 
     return attr_dict
 

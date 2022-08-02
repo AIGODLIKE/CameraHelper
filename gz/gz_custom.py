@@ -1,33 +1,33 @@
+import numpy as np
+
+import bgl
+import bmesh
+import bpy
+
+from mathutils import Vector
 from bpy.types import Gizmo
 from mathutils import Vector
 from bpy_extras import view3d_utils
-import bgl
-from mathutils import Vector
-import bmesh
-import numpy as np
-import bpy
+from dataclasses import dataclass
 
 from ..prefs.get_pref import get_pref
 from ..ops.op_motion_cam import get_obj_2d_loc
 
 
+@dataclass
 class GizmoInfo_2D():
-    def __init__(self, name, type, icon,
-                 draw_options: set,
-                 use_tooltip: bool,
-                 alpha: float, color: list[float],
-                 alpha_highlight: float, color_highlight: list[float],
-                 scale_basis=(80 * 0.35) / 2):
-        self.name = name
-        self.type = type
-        self.icon = icon
-        self.draw_options = draw_options
-        self.use_tooltip = use_tooltip
-        self.alpha = alpha
-        self.color = color
-        self.alpha_highlight = alpha_highlight
-        self.color_highlight = color_highlight
-        self.scale_basis = scale_basis
+    name: str
+    type: str
+    icon: str
+    draw_options: set[str]
+
+    alpha: float
+    color: list[float]
+    alpha_highlight: float
+    color_highlight: list[float]
+
+    scale_basis: float = (80 * 0.35) / 2
+    use_tooltip: bool = True
 
 
 def create_geo_shape(obj=None, type='TRIS', scale=1):
@@ -298,3 +298,106 @@ class CAMHP_GT_custom_move_3d(GizmoBase, Gizmo):
 
         # context.area.header_text_set(f"{self.gizmo_name}: {value[0]:.4f}, {value[1]:.4f}, {value[2]:.4f}")
         pass
+
+
+class CAMHP_OT_rotate_object(bpy.types.Operator):
+    bl_idname = 'camhp.rotate_object'
+    bl_label = 'Rotate Object'
+    # bl_options = {'REGISTER', 'UNDO'}
+
+    obj_name: bpy.props.StringProperty(name='Object Name')
+    axis: bpy.props.EnumProperty(items=[('X', 'X', 'X'), ('Y', 'Y', 'Y'), ('Z', 'Z', 'Z')])
+
+    def append_handles(self):
+        self.cursor_set = True
+        bpy.context.window.cursor_modal_set('MOVE_X')
+        bpy.context.window_manager.modal_handler_add(self)
+
+    def remove_handles(self):
+        bpy.context.window.cursor_modal_restore()
+
+    def modal(self, context, event):
+        if event.type == 'MOUSEMOVE':
+            self.mouseDX = self.mouseDX - event.mouse_x
+            # shift 减速
+            multiplier = 0.005 if event.shift else 0.01
+            offset = multiplier * self.mouseDX
+
+            rotate_mode = {'Z': 'ZYX', 'X': 'XYZ', 'Y': 'YXZ'}[self.axis]
+
+            # set rotate
+            rot = self.obj.rotation_euler.to_matrix().to_euler(rotate_mode)
+            axis = self.axis.lower()
+            setattr(rot, axis, getattr(rot, axis) + offset)
+            self.obj.rotation_euler = rot.to_matrix().to_euler(self.obj.rotation_mode)
+
+            # 重置
+            self.mouseDX = event.mouse_x
+
+        elif event.type == 'LEFTMOUSE':
+            self.remove_handles()
+            return {'FINISHED'}
+
+        elif event.type in {'RIGHTMOUSE', 'ESC'}:
+            return {'CANCELLED'}
+
+        return {'RUNNING_MODAL'}
+
+    def invoke(self, context, event):
+        self.obj = bpy.data.objects[self.obj_name]
+
+        if self.axis == 'X':
+            self._axis = 0
+        elif self.axis == 'Y':
+            self._axis = 1
+        else:
+            self._axis = 2
+
+        self.mouseDX = event.mouse_x
+
+        # add handles
+        self.append_handles()
+
+        return {"RUNNING_MODAL"}
+
+
+class CAMHP_GT_custom_rotate_1d(GizmoBase, Gizmo):
+    bl_idname = "CAMHP_GT_custom_rotate_1d"
+    # The id must be "offset"
+    bl_target_properties = (
+        {"id": "offset", "type": 'FLOAT', "array_length": 1},
+    )
+
+    def _update_offset_matrix(self):
+        pass
+        # self.matrix_offset.col[3][0] = x
+        # self.matrix_offset.col[3][1] = y
+        # self.matrix_offset.col[3][2] = z
+
+    def setup(self):
+        if not hasattr(self, "custom_shape"):
+            pref_gz = get_pref().gz_motion_source
+            self.custom_shape = self.new_custom_shape('TRIS', create_geo_shape(scale=pref_gz.scale_basis))
+
+    def modal(self, context, event, tweak):
+        mouse = self._projected_value(context, event)
+        delta = (mouse - self.init_mouse)
+        if 'SNAP' in tweak:
+            delta = round(delta)
+        if 'PRECISE' in tweak:
+            delta /= 10.0
+
+        value = self.init_value - delta / 1000
+
+        self.target_set_value("offset", value)
+        context.area.header_text_set(f"Rotate: {value:.4f}")
+        return {'RUNNING_MODAL'}
+
+    def _projected_value(self, context, event):
+        return event.mouse_x
+
+    def invoke(self, context, event):
+        self.init_mouse = self._projected_value(context, event)
+        self.init_value = Vector(self.target_get_value("offset"))
+
+        return {'RUNNING_MODAL'}

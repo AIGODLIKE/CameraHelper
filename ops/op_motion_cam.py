@@ -109,7 +109,7 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
     else:
         cam = None
 
-    print(cam)
+    # print(cam)
     if cam is None: return
 
     # 相机变化
@@ -545,6 +545,7 @@ from .draw_utils.bl_ui_label import BL_UI_Label
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 from bpy.app.translations import pgettext_iface as tip_
 
+
 def get_obj_2d_loc(obj, context):
     r3d = context.space_data.region_3d
 
@@ -605,7 +606,7 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
             self.buttons.append(btn)
 
     def on_invoke(self, context, event):
-        widgets_panel = [self.label_tip1, self.label_tip2,self.label_tip3]
+        widgets_panel = [self.label_tip1, self.label_tip2, self.label_tip3]
         widgets = [self.panel]
         widgets += widgets_panel
 
@@ -678,7 +679,7 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
         if context.object.type == 'CAMERA':
             cam = context.object
         elif (affect.use_sub_camera and
-              affect.sub_camera  and
+              affect.sub_camera and
               affect.sub_camera.type == 'CAMERA'):
 
             cam = affect.sub_camera
@@ -720,10 +721,13 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
                 ob.keyframe_insert('rotation_euler')
 
             if not cam: continue
-
             # 相机数值
             if affect.use_lens:
+                cam.update_tag()
+                print(cam.data.lens)
                 ob.data.lens = cam.data.lens
+                print(ob.data.lens)
+
                 ob.data.keyframe_insert('lens')
 
             if affect.use_focus_distance:
