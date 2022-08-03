@@ -9,7 +9,7 @@ from .utils import gen_bezier_curve_from_points, gen_sample_attr_obj, gen_sample
 
 C_ATTR_FAC = 'factor'
 C_ATTR_LENGTH = 'length'
-C_STATE_UPDATE = False  # 用于保护曲线更新的状态
+G_STATE_UPDATE = False  # 用于保护曲线更新的状态
 
 
 def parse_data_path(src_obj, scr_data_path):
@@ -232,11 +232,11 @@ def gen_cam_path(self, context):
         coll.objects.unlink(path_attr)
         coll.objects.unlink(path_mesh)
 
-    global C_STATE_UPDATE
+    global G_STATE_UPDATE
 
-    C_STATE_UPDATE = True
+    G_STATE_UPDATE = True
     process()
-    C_STATE_UPDATE = False
+    G_STATE_UPDATE = False
 
 
 # 偏移factor的get/set-------------------------------------------------------------------
@@ -252,10 +252,10 @@ def set_offset_factor(self, value):
 
     obj = self.id_data
 
-    global C_STATE_UPDATE
-    if C_STATE_UPDATE is True: return
+    global G_STATE_UPDATE
+    if G_STATE_UPDATE is True: return
 
-    C_STATE_UPDATE = True
+    G_STATE_UPDATE = True
 
     # obj.constraints['Motion Camera'].offset_factor = value
 
@@ -312,7 +312,7 @@ def set_offset_factor(self, value):
             interpolate_cam(obj, from_obj, to_obj, true_fac)
             break
 
-    C_STATE_UPDATE = False
+    G_STATE_UPDATE = False
 
 
 def update_driver(self, context):

@@ -6,11 +6,12 @@ from .draw_utils.shader import CameraMotionPath, CameraThumb
 from bpy.types import PropertyGroup
 from bpy.props import PointerProperty, BoolProperty, EnumProperty
 
-C_HANDLE_CURVE = None
-C_HANDLE_CAM_PV = None
+# 全局
+G_HANDLE_CURVE = None
+G_HANDLE_CAM_PV = None
 
-C_INST_CURVE = None
-C_INST_CAM_PV = None
+G_INST_CURVE = None
+G_INST_CAM_PV = None
 
 
 class CameraPV(PropertyGroup):
@@ -72,39 +73,39 @@ class CAMHP_OT_campv_popup(bpy.types.Operator):
 
 
 def clear_handle():
-    global C_HANDLE_CURVE, C_HANDLE_CAM_PV
-    global C_INST_CURVE, C_INST_CAM_PV
+    global G_HANDLE_CURVE, G_HANDLE_CAM_PV
+    global G_INST_CURVE, G_INST_CAM_PV
 
-    if C_INST_CURVE:
+    if G_INST_CURVE:
         try:
-            SpaceView3D.draw_handler_remove(C_HANDLE_CURVE, 'WINDOW')
+            SpaceView3D.draw_handler_remove(G_HANDLE_CURVE, 'WINDOW')
         except Exception:
             print("Handle C_HANDLE_CURVE already removed")
 
-        C_HANDLE_CURVE = None
-        C_INST_CURVE = None
+        G_HANDLE_CURVE = None
+        G_INST_CURVE = None
 
-    if C_INST_CAM_PV and not bpy.context.scene.camhp_pv.pin:
+    if G_INST_CAM_PV and not bpy.context.scene.camhp_pv.pin:
         try:
-            SpaceView3D.draw_handler_remove(C_HANDLE_CAM_PV, 'WINDOW')
+            SpaceView3D.draw_handler_remove(G_HANDLE_CAM_PV, 'WINDOW')
         except Exception:
             print("Handle C_HANDLE_CAM_PV already removed")
 
-        C_HANDLE_CAM_PV = None
-        C_INST_CAM_PV = None
+        G_HANDLE_CAM_PV = None
+        G_INST_CAM_PV = None
 
 
 def add_handle(context, depsgraph):
-    global C_HANDLE_CURVE, C_HANDLE_CAM_PV
-    global C_INST_CURVE, C_INST_CAM_PV
+    global G_HANDLE_CURVE, G_HANDLE_CAM_PV
+    global G_INST_CURVE, G_INST_CAM_PV
 
-    if C_HANDLE_CURVE is None:
-        C_INST_CURVE = CameraMotionPath(context, depsgraph)
-        C_HANDLE_CURVE = SpaceView3D.draw_handler_add(C_INST_CURVE, (context,), 'WINDOW', 'POST_VIEW')
+    if G_HANDLE_CURVE is None:
+        G_INST_CURVE = CameraMotionPath(context, depsgraph)
+        G_HANDLE_CURVE = SpaceView3D.draw_handler_add(G_INST_CURVE, (context,), 'WINDOW', 'POST_VIEW')
 
-    if C_HANDLE_CAM_PV is None:
-        C_INST_CAM_PV = CameraThumb(context, depsgraph)
-        C_HANDLE_CAM_PV = SpaceView3D.draw_handler_add(C_INST_CAM_PV, (context,), 'WINDOW', 'POST_PIXEL')
+    if G_HANDLE_CAM_PV is None:
+        G_INST_CAM_PV = CameraThumb(context, depsgraph)
+        G_HANDLE_CAM_PV = SpaceView3D.draw_handler_add(G_INST_CAM_PV, (context,), 'WINDOW', 'POST_PIXEL')
 
 
 def is_select_obj(context):
@@ -118,8 +119,8 @@ def is_select_obj(context):
 
 @persistent
 def draw_handle(scene, depsgraph):
-    global C_HANDLE_CURVE, C_HANDLE_CAM_PV
-    global C_INST_CURVE, C_INST_CAM_PV
+    global G_HANDLE_CURVE, G_HANDLE_CAM_PV
+    global G_INST_CURVE, G_INST_CAM_PV
 
     context = bpy.context
 
@@ -136,18 +137,18 @@ class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return C_INST_CAM_PV
+        return G_INST_CAM_PV
 
     def invoke(self, context, event):
         context.scene.camhp_snap_shot_image = True
         return self.execute(context)
 
     def execute(self, context):
-        self.width = C_INST_CAM_PV.width
-        self.height = C_INST_CAM_PV.height
+        self.width = G_INST_CAM_PV.width
+        self.height = G_INST_CAM_PV.height
 
-        cam = C_INST_CAM_PV.cam
-        buffer = C_INST_CAM_PV.buffer
+        cam = G_INST_CAM_PV.cam
+        buffer = G_INST_CAM_PV.buffer
 
         if f'_SnapShot_{cam.name}' in bpy.data.images:
             img = bpy.data.images[f'_SnapShot_{cam.name}']

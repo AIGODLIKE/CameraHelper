@@ -291,10 +291,10 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
     def correct_rotate_gz_euler(self):
         for gz, axis in self._gz_axis.items():
             if axis == 'X':
-                rotate = Euler((0, math.radians(90), 0), 'XYZ')
+                rotate = Euler((math.radians(90), math.radians(-180), math.radians(-90)), 'XYZ')  # 奇怪的数值
 
             elif axis == 'Y':
-                rotate = Euler((math.radians(90), 0, 0), 'XYZ')
+                rotate = Euler((math.radians(-90), 0, 0), 'XYZ')
 
             else:
                 rotate = Euler((0, 0, math.radians(90)), 'XYZ')
@@ -307,7 +307,8 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
 
     def add_rotate_gz(self, item, axis='Z'):
         # rotate gz
-        gz = self.gizmos.new("GIZMO_GT_dial_3d")
+        # gz = self.gizmos.new("GIZMO_GT_dial_3d")
+        gz = self.gizmos.new("CAMHP_GT_custom_rotate_1d")
 
         prop = gz.target_set_operator(CAMHP_OT_rotate_object.bl_idname)
         prop.obj_name = item.camera.name
@@ -320,18 +321,24 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
         gz.use_draw_scale = False
 
         # red, green, blue for X Y Z axis
-        gz.alpha = 0.8
+        gz.alpha = 0.5
         gz.alpha_highlight = 1
 
+        ui = bpy.context.preferences.themes[0].user_interface
+
+        axis_x = ui.axis_x[:3]
+        axis_y = ui.axis_y[:3]
+        axis_z = ui.axis_z[:3]
+
         if axis == 'X':
-            gz.color = 0.5, 0, 0
-            gz.color_highlight = 0.8, 0, 0
+            gz.color = axis_x
+            gz.color_highlight = axis_x
         elif axis == 'Y':
-            gz.color = 0, 0.5, 0
-            gz.color_highlight = 0, 0.8, 0
+            gz.color = axis_y
+            gz.color_highlight = axis_y
         elif axis == 'Z':
-            gz.color = 0, 0, 0.5
-            gz.color_highlight = 0, 0, 0.8
+            gz.color = axis_z
+            gz.color_highlight = axis_z
 
         self._rotate_gz[gz] = item.camera
         self._gz_axis[gz] = axis
