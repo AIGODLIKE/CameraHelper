@@ -35,10 +35,10 @@ class GizmoInfo_2D():
 def load_shape_geo_obj(obj_name='gz_shape_ROTATE'):
     """ 加载一个几何形状的模型，用于绘制几何形状的控件 """
     gz_shape_path = Path(__file__).parent.joinpath('custom_shape', 'gz_shape.blend')
-    print(str(gz_shape_path))
+    # print(str(gz_shape_path))
     with bpy.data.libraries.load(str(gz_shape_path)) as (data_from, data_to):
         data_to.objects = [obj_name]
-    print(data_to.objects)
+    # print(data_to.objects)
     return data_to.objects[0]
 
 
@@ -161,7 +161,10 @@ class CAMHP_GT_custom_move_1d(GizmoBase3D, Gizmo):
 
             self.custom_shape = self.new_custom_shape('TRIS',
                                                       create_geo_shape(obj=shape_obj, scale=pref_gz.scale_basis))
-            bpy.data.objects.remove(shape_obj)
+            try:
+                bpy.data.objects.remove(shape_obj)
+            except:
+                pass
 
     def _update_offset_matrix(self):
         # offset behind the light
@@ -319,7 +322,11 @@ class CAMHP_GT_custom_rotate_1d(Gizmo):
             shape_obj = load_shape_geo_obj('gz_shape_ROTATE')
             self.custom_shape = self.new_custom_shape('TRIS',
                                                       create_geo_shape(obj=shape_obj, scale=pref_gz.scale_basis * 3))
-            bpy.data.objects.remove(shape_obj)
+
+            try:
+                bpy.data.objects.remove(shape_obj)
+            except:
+                pass
 
 
 class CAMHP_OT_rotate_object(bpy.types.Operator):

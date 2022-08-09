@@ -332,13 +332,12 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
 
         if axis == 'X':
             gz.color = axis_x
-            gz.color_highlight = axis_x
         elif axis == 'Y':
             gz.color = axis_y
-            gz.color_highlight = axis_y
         elif axis == 'Z':
             gz.color = axis_z
-            gz.color_highlight = axis_z
+
+        gz.color_highlight = (1, 1, 1)
 
         self._rotate_gz[gz] = item.camera
         self._gz_axis[gz] = axis
