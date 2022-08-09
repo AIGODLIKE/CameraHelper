@@ -228,9 +228,9 @@ def gen_cam_path(self, context):
 
         # hide
         coll = bpy.context.collection
-        coll.objects.unlink(path)
-        coll.objects.unlink(path_attr)
-        coll.objects.unlink(path_mesh)
+        # coll.objects.unlink(path)
+        # coll.objects.unlink(path_attr)
+        # coll.objects.unlink(path_mesh)
 
     global G_STATE_UPDATE
 
