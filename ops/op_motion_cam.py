@@ -701,9 +701,8 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
         context.collection.objects.link(ob)
 
         for f in range(self.frame_start, self.frame_end):
-            context.scene.frame_current = f
-            context.view_layer.update()
-            matrix = context.object.matrix_world
+            context.scene.frame_set(f)
+            matrix = context.object.matrix_world.copy()
 
             # 位置
             loc = matrix.to_translation()
