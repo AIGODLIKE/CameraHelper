@@ -671,8 +671,93 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
     frame_end: IntProperty(name="End Frame", default=100)
     frame_step: IntProperty(name="Frame Step", default=1)
 
+    # bake
+    cam = None
+    ob = None
+
+    def modal(self, context, event):
+        if event.type == 'ESC':
+            return {'CANCELLED'}
+
+        frame = self.frame
+        ob = self.cam_bake
+        affect = self.affect
+        cam = self.cam
+
+        if frame > self.frame_end:
+            return {'FINISHED'}
+
+        context.scene.frame_set(frame)
+        matrix = context.object.matrix_world.copy()
+
+        # 位置
+        loc = matrix.to_translation()
+        ob.location = loc
+        ob.keyframe_insert('location')
+
+        if affect.use_euler:
+            if self.euler_prev is None:
+                euler = matrix.to_euler(context.object.rotation_mode)
+            else:
+                euler = matrix.to_euler(context.object.rotation_mode, self.euler_prev)
+            self.euler_prev = euler.copy()
+
+            ob.rotation_euler = self.euler_prev
+            ob.keyframe_insert('rotation_euler')
+
+        if not cam: return {'PASS_THROUGH'}
+        # 相机数值
+        if affect.use_lens:
+            cam.update_tag()
+            print(cam.data.lens)
+            ob.data.lens = cam.data.lens
+            print(ob.data.lens)
+
+            ob.data.keyframe_insert('lens')
+
+        if affect.use_focus_distance:
+            ob.data.dof.focus_distance = cam.data.dof.focus_distance
+            ob.data.dof.keyframe_insert('focus_distance')
+
+        if affect.use_aperture_fstop:
+            ob.data.dof.aperture_fstop = cam.data.dof.aperture_fstop
+            ob.data.dof.keyframe_insert('aperture_fstop')
+
+        # 自定义属性
+        for item in affect.custom_props:
+            if item.data_path == '': continue
+
+            tg_obj = ob
+            from_obj = context.object
+
+            src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
+            _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
+            if from_attr is None or src_attr is None or src_obj is None: continue
+
+            from_value = getattr(_from_obj, from_attr)
+
+            try:
+                if isinstance(from_value, float):
+                    setattr(src_obj, src_attr, from_value)
+                elif isinstance(from_value, mathutils.Vector):
+                    setattr(src_obj, src_attr, from_value)
+                elif isinstance(from_value, mathutils.Matrix):
+                    setattr(src_obj, src_attr, from_value)
+                elif isinstance(from_value, bool):
+                    setattr(src_obj, src_attr, from_value)
+                elif isinstance(from_value, bpy.types.Object):
+                    setattr(src_obj, src_attr, from_value)
+
+                if hasattr(src_obj, 'keyframe_insert'):
+                    kf = getattr(src_obj, 'keyframe_insert')
+                    kf(src_attr)
+
+            except Exception as e:
+                print(e)
+
+        return {'PASS_THROUGH'}
+
     def execute(self, context):
-        euler_prev = None
         m_cam = context.object.motion_cam
         affect = m_cam.affect
 
@@ -700,80 +785,21 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
 
         context.collection.objects.link(ob)
 
-        for f in range(self.frame_start, self.frame_end):
-            context.scene.frame_set(f)
-            matrix = context.object.matrix_world.copy()
+        context.scene.frame_set(self.frame_start)
 
-            # 位置
-            loc = matrix.to_translation()
-            ob.location = loc
-            ob.keyframe_insert('location')
+        self.frame = self.frame_start
+        self.cam = cam
+        self.cam_bake = ob
+        self.affect = affect
+        self.euler_prev = None
 
-            if affect.use_euler:
-                if euler_prev is None:
-                    euler = matrix.to_euler(context.object.rotation_mode)
-                else:
-                    euler = matrix.to_euler(context.object.rotation_mode, euler_prev)
-                euler_prev = euler.copy()
-
-                ob.rotation_euler = euler_prev
-                ob.keyframe_insert('rotation_euler')
-
-            if not cam: continue
-            # 相机数值
-            if affect.use_lens:
-                cam.update_tag()
-                print(cam.data.lens)
-                ob.data.lens = cam.data.lens
-                print(ob.data.lens)
-
-                ob.data.keyframe_insert('lens')
-
-            if affect.use_focus_distance:
-                ob.data.dof.focus_distance = cam.data.dof.focus_distance
-                ob.data.dof.keyframe_insert('focus_distance')
-
-            if affect.use_aperture_fstop:
-                ob.data.dof.aperture_fstop = cam.data.dof.aperture_fstop
-                ob.data.dof.keyframe_insert('aperture_fstop')
-
-            # 自定义属性
-            for item in affect.custom_props:
-                if item.data_path == '': continue
-
-                tg_obj = ob
-                from_obj = context.object
-
-                src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
-                _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
-                if from_attr is None or src_attr is None or src_obj is None: continue
-
-                from_value = getattr(_from_obj, from_attr)
-
-                try:
-                    if isinstance(from_value, float):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, mathutils.Vector):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, mathutils.Matrix):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, bool):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, bpy.types.Object):
-                        setattr(src_obj, src_attr, from_value)
-
-                    if hasattr(src_obj, 'keyframe_insert'):
-                        kf = getattr(src_obj, 'keyframe_insert')
-                        kf(src_attr)
-
-                except Exception as e:
-                    print(e)
-
-        return {'FINISHED'}
+        return {"RUNNING_MODAL"}
 
     def invoke(self, context, event):
         wm = context.window_manager
-        return wm.invoke_props_dialog(self)
+
+        return self.execute(context)
+        # return wm.invoke_props_dialog(self)
 
 
 ###############################################################################

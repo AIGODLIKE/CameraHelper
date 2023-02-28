@@ -181,7 +181,7 @@ def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, clos
     curve_obj = bpy.data.objects.new(curve_name, curve_data)
     # 链接到场景(否则物体将不会更新)
     coll = bpy.context.collection
-    coll.objects.link(curve_obj)
+    # coll.objects.link(curve_obj)
 
     return curve_obj
 
