@@ -1,7 +1,7 @@
+import gpu.state
 import numpy as np
 import os
 
-import bgl
 import bmesh
 import bpy
 
@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ..prefs.get_pref import get_pref
 from ..ops.op_motion_cam import get_obj_2d_loc
+from ..ops.draw_utils import wrap_bgl_restore
 
 
 @dataclass
@@ -109,9 +110,8 @@ class GizmoBase3D(Gizmo):
             self.custom_shape = create_geo_shape()
 
         self._update_offset_matrix()
-        bgl.glLineWidth(self.line_width)
-        self.draw_custom_shape(self.custom_shape, select_id=select_id)
-        bgl.glLineWidth(1)
+        with wrap_bgl_restore(self.line_width):
+            self.draw_custom_shape(self.custom_shape, select_id=select_id)
 
     def mouse_ray(self, context, event):
         """获取鼠标射线"""

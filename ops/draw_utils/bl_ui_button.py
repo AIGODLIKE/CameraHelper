@@ -1,10 +1,11 @@
 from .bl_ui_widget import BL_UI_Widget
 
-import bgl
 import gpu
 import blf
+import bgl
 import bpy
 from gpu_extras.batch import batch_for_shader
+from . import wrap_gpu_state
 
 
 class BL_UI_Button(BL_UI_Widget):
@@ -92,13 +93,12 @@ class BL_UI_Button(BL_UI_Widget):
 
         self.set_colors()
 
-        bgl.glEnable(bgl.GL_BLEND)
+        with wrap_gpu_state():
 
-        self.batch_panel.draw(self.shader)
+            self.batch_panel.draw(self.shader)
 
-        self.draw_image()
+            self.draw_image()
 
-        bgl.glDisable(bgl.GL_BLEND)
 
         # Draw text
         self.draw_text(area_height)

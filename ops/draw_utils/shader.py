@@ -20,6 +20,8 @@ PADDING = 20
 
 indices = ((0, 1, 2), (2, 1, 3))
 
+from . import wrap_bgl_restore
+
 
 def get_start_point(thumb_width, thumb_height):
     padding = 10
@@ -102,21 +104,12 @@ class CameraMotionPath():
 
         # if context.object.motion_cam.path_points == '': return
 
-        bgl.glEnable(bgl.GL_BLEND)
-        bgl.glEnable(bgl.GL_LINE_SMOOTH)
-        bgl.glEnable(bgl.GL_DEPTH_TEST)
-
-        bgl.glLineWidth(get_pref().draw_motion_curve.width)
-        shader_3d.bind()
-        shader_3d.uniform_float("color", get_pref().draw_motion_curve.color)
-        batch = batch_for_shader(shader_3d, 'LINES', {"pos": draw_points})
-        batch.draw(shader_3d)
-
-        # restore opengl defaults
-        bgl.glLineWidth(1)
-        bgl.glDisable(bgl.GL_BLEND)
-        bgl.glDisable(bgl.GL_LINE_SMOOTH)
-        bgl.glEnable(bgl.GL_DEPTH_TEST)
+        with wrap_bgl_restore(width=1):
+            bgl.glLineWidth(get_pref().draw_motion_curve.width)
+            shader_3d.bind()
+            shader_3d.uniform_float("color", get_pref().draw_motion_curve.color)
+            batch = batch_for_shader(shader_3d, 'LINES', {"pos": draw_points})
+            batch.draw(shader_3d)
 
 
 class CameraThumb():
