@@ -10,7 +10,8 @@ from .utils import gen_bezier_curve_from_points, gen_sample_attr_obj, gen_sample
 C_ATTR_FAC = 'factor'
 C_ATTR_LENGTH = 'length'
 G_STATE_UPDATE = False  # 用于保护曲线更新的状态
-
+# 绕过blender更新bug
+G_PROPS = {}
 
 def parse_data_path(src_obj, scr_data_path):
     """解析来自用户的data_path
@@ -59,6 +60,8 @@ def get_interpolate_euler(from_obj, to_obj, fac):
 
 
 def get_interpolate_lens(from_obj, to_obj, fac):
+    G_PROPS['lens'] = mix_value(from_obj.data.lens, to_obj.data.lens, fac)
+    # print(G_PROPS['lens'])
     return mix_value(from_obj.data.lens, to_obj.data.lens, fac)
 
 
@@ -244,21 +247,10 @@ def gen_cam_path(self, context):
 def get_offset_factor(self):
     return self.get('offset_factor', 0.0)
 
-
-def set_offset_factor(self, value):
-    # 限制或循环val
-    val = max(min(value, 1), 0)  # 循环
-    self['offset_factor'] = val
-
-    obj = self.id_data
-
-    global G_STATE_UPDATE
-    if G_STATE_UPDATE is True: return
-
-    G_STATE_UPDATE = True
-
-    # obj.constraints['Motion Camera'].offset_factor = value
-
+def _update_cam(self,context):
+    if G_STATE_UPDATE: return
+    update_cam(self.id_data, self.id_data.motion_cam.offset_factor)
+def update_cam(obj, val):
     if 'Motion Camera' not in obj.constraints:
         return
     if obj.motion_cam.affect.enable is False:
@@ -311,6 +303,22 @@ def set_offset_factor(self, value):
 
             interpolate_cam(obj, from_obj, to_obj, true_fac)
             break
+
+
+def set_offset_factor(self, value):
+    # 限制或循环val
+    val = max(min(value, 1), 0)  # 循环
+    self['offset_factor'] = val
+
+    obj = self.id_data
+
+    global G_STATE_UPDATE
+    if G_STATE_UPDATE is True: return
+
+    G_STATE_UPDATE = True
+
+    # obj.constraints['Motion Camera'].offset_factor = value
+    update_cam(obj, val)
 
     G_STATE_UPDATE = False
 
@@ -674,90 +682,89 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
     # bake
     cam = None
     ob = None
+    timer = None
 
     def modal(self, context, event):
-        if event.type == 'ESC':
-            return {'CANCELLED'}
+        if event.type == 'TIMER':
+            ob = self.cam_bake
+            affect = self.affect
+            cam = self.cam
 
-        frame = self.frame
-        ob = self.cam_bake
-        affect = self.affect
-        cam = self.cam
-
-        if frame > self.frame_end:
-            return {'FINISHED'}
-
-        context.scene.frame_set(frame)
-        matrix = context.object.matrix_world.copy()
-
-        # 位置
-        loc = matrix.to_translation()
-        ob.location = loc
-        ob.keyframe_insert('location')
-
-        if affect.use_euler:
-            if self.euler_prev is None:
-                euler = matrix.to_euler(context.object.rotation_mode)
+            if self.frame > self.frame_end:
+                context.window_manager.event_timer_remove(self.timer)
+                return {'FINISHED'}
             else:
-                euler = matrix.to_euler(context.object.rotation_mode, self.euler_prev)
-            self.euler_prev = euler.copy()
+                self.frame += self.frame_step
 
-            ob.rotation_euler = self.euler_prev
-            ob.keyframe_insert('rotation_euler')
+            context.scene.frame_set(self.frame)
+            matrix = context.object.matrix_world.copy()
+            print('frame', self.frame, matrix)
+            # 位置
+            loc = matrix.to_translation()
+            ob.location = loc
+            ob.keyframe_insert('location')
 
-        if not cam: return {'PASS_THROUGH'}
-        # 相机数值
-        if affect.use_lens:
-            cam.update_tag()
-            print(cam.data.lens)
-            ob.data.lens = cam.data.lens
-            print(ob.data.lens)
+            if affect.use_euler:
+                if self.euler_prev is None:
+                    euler = matrix.to_euler(context.object.rotation_mode)
+                else:
+                    euler = matrix.to_euler(context.object.rotation_mode, self.euler_prev)
+                self.euler_prev = euler.copy()
 
-            ob.data.keyframe_insert('lens')
+                ob.rotation_euler = self.euler_prev
+                ob.keyframe_insert('rotation_euler')
 
-        if affect.use_focus_distance:
-            ob.data.dof.focus_distance = cam.data.dof.focus_distance
-            ob.data.dof.keyframe_insert('focus_distance')
+            if not cam: return {'PASS_THROUGH'}
+            # 相机数值
+            if affect.use_lens:
+                ob.data.lens = G_PROPS['lens']
+                ob.data.keyframe_insert('lens')
 
-        if affect.use_aperture_fstop:
-            ob.data.dof.aperture_fstop = cam.data.dof.aperture_fstop
-            ob.data.dof.keyframe_insert('aperture_fstop')
+            if affect.use_focus_distance:
+                ob.data.dof.focus_distance = cam.data.dof.focus_distance
+                ob.data.dof.keyframe_insert('focus_distance')
 
-        # 自定义属性
-        for item in affect.custom_props:
-            if item.data_path == '': continue
+            if affect.use_aperture_fstop:
+                ob.data.dof.aperture_fstop = cam.data.dof.aperture_fstop
+                ob.data.dof.keyframe_insert('aperture_fstop')
 
-            tg_obj = ob
-            from_obj = context.object
+            # 自定义属性
+            for item in affect.custom_props:
+                if item.data_path == '': continue
 
-            src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
-            _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
-            if from_attr is None or src_attr is None or src_obj is None: continue
+                tg_obj = ob
+                from_obj = context.object
 
-            from_value = getattr(_from_obj, from_attr)
+                src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
+                _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
+                if from_attr is None or src_attr is None or src_obj is None: continue
 
-            try:
-                if isinstance(from_value, float):
-                    setattr(src_obj, src_attr, from_value)
-                elif isinstance(from_value, mathutils.Vector):
-                    setattr(src_obj, src_attr, from_value)
-                elif isinstance(from_value, mathutils.Matrix):
-                    setattr(src_obj, src_attr, from_value)
-                elif isinstance(from_value, bool):
-                    setattr(src_obj, src_attr, from_value)
-                elif isinstance(from_value, bpy.types.Object):
-                    setattr(src_obj, src_attr, from_value)
+                from_value = getattr(_from_obj, from_attr)
 
-                if hasattr(src_obj, 'keyframe_insert'):
-                    kf = getattr(src_obj, 'keyframe_insert')
-                    kf(src_attr)
+                try:
+                    if isinstance(from_value, float):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, mathutils.Vector):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, mathutils.Matrix):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, bool):
+                        setattr(src_obj, src_attr, from_value)
+                    elif isinstance(from_value, bpy.types.Object):
+                        setattr(src_obj, src_attr, from_value)
 
-            except Exception as e:
-                print(e)
+                    if hasattr(src_obj, 'keyframe_insert'):
+                        kf = getattr(src_obj, 'keyframe_insert')
+                        kf(src_attr)
+
+                except Exception as e:
+                    print(e)
 
         return {'PASS_THROUGH'}
 
-    def execute(self, context):
+    def invoke(self, context, event):
+        print('invoke')
+        wm = context.window_manager
         m_cam = context.object.motion_cam
         affect = m_cam.affect
 
@@ -777,11 +784,11 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
 
         name = cam.name + '_bake'
         data_name = cam.data.name + '_bake'
-
+        # print(name, data_name)
         cam_data = bpy.data.cameras.new(name=data_name)
         ob = bpy.data.objects.new(name, cam_data)
-        ob.constraints.clear()
-        ob.location = 0, 0, 0
+        # ob.constraints.clear()
+        # ob.location = 0, 0, 0
 
         context.collection.objects.link(ob)
 
@@ -792,13 +799,10 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
         self.cam_bake = ob
         self.affect = affect
         self.euler_prev = None
-
+        print('invoke end')
+        self.timer = wm.event_timer_add(0.01, window=context.window)
+        context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
-
-    def invoke(self, context, event):
-        wm = context.window_manager
-
-        return self.execute(context)
         # return wm.invoke_props_dialog(self)
 
 
