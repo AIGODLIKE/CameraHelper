@@ -33,6 +33,13 @@ class CameraThumb(PropertyGroup):
     max_width: IntProperty(name='Max Width', default=400, min=50, soft_max=800)
     max_height: IntProperty(name='Max Height', default=300, min=50, soft_max=600)
 
+    position: EnumProperty(name='Position', items=[
+        ('TOP_LEFT', 'Top Left', ''),
+        ('TOP_RIGHT', 'Top Right', ''),
+        ('BOTTOM_LEFT', 'Bottom Left', ''),
+        ('BOTTOM_RIGHT', 'Bottom Right', ''),
+    ], default='TOP_LEFT')
+
 
 class CAMHP_Preference(bpy.types.AddonPreferences):
     bl_idname = __ADDON_NAME__
@@ -86,6 +93,8 @@ class CAMHP_Preference(bpy.types.AddonPreferences):
         box.label(text='Camera Thumbnails', icon='CAMERA_DATA')
         box.prop(self.camera_thumb, 'max_width', slider=True)
         box.prop(self.camera_thumb, 'max_height', slider=True)
+        row = box.row(align=True)
+        row.prop(self.camera_thumb, 'position', expand=True)
 
     def draw_keymap(self, context, layout):
         col = layout.box().column()

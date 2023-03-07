@@ -21,6 +21,50 @@ PADDING = 20
 indices = ((0, 1, 2), (2, 1, 3))
 
 
+def get_start_point(thumb_width, thumb_height):
+    padding = 10
+    area = bpy.context.area
+    position = get_pref().camera_thumb.position
+
+    if position == 'TOP_LEFT':
+        right = False
+        top = True
+    elif position == 'TOP_RIGHT':
+        right = True
+        top = True
+    elif position == 'BOTTOM_LEFT':
+        right = False
+        top = False
+    else:
+        right = True
+        top = False
+
+    ui_width = toolbar_width = header_height = tool_header_height = 0
+    if area.spaces[0].show_region_toolbar and bpy.context.preferences.system.use_region_overlap:
+        for region in area.regions:
+            if region.type == 'UI':
+                ui_width = region.width
+            elif region.type == 'TOOLS':
+                toolbar_width = region.width
+            elif region.type == 'HEADER':
+                header_height = region.height
+            elif region.type == 'TOOL_HEADER':
+                tool_header_height = region.height
+
+    header_height += tool_header_height
+
+    if right:
+        w = area.width - ui_width - thumb_width - padding
+    else:
+        w = padding + toolbar_width
+
+    if top:
+        h = area.height - header_height - thumb_height - padding
+    else:
+        h = padding
+    return (w, h)
+
+
 class CameraMotionPath():
 
     def __init__(self, context, deps):
@@ -142,11 +186,11 @@ class CameraThumb():
             do_color_management=False)
         gpu.state.depth_mask_set(False)
         context.space_data.overlay.show_overlays = ori_show_overlay
-
-        draw_texture_2d(self.offscreen.texture_color, (10, 10), self.width, self.height)
+        start = get_start_point(self.width, self.height)
+        draw_texture_2d(self.offscreen.texture_color, start, self.width, self.height)
 
         framebuffer = gpu.state.active_framebuffer_get()
-        buffer = framebuffer.read_color(10, 10, self.width, self.height, 4, 0, 'FLOAT')
+        buffer = framebuffer.read_color(*start, self.width, self.height, 4, 0, 'FLOAT')
         buffer.dimensions = self.width * self.height * 4
         self.buffer = buffer
 
@@ -165,13 +209,13 @@ class CameraThumb():
         # bgl.glEnable(bgl.GL_LINE_SMOOTH)
         # bgl.glEnable(bgl.GL_DEPTH_TEST)
         shader_2d.bind()
-
+        start = get_start_point(self.width, self.height)
         # shadow
         shader_2d.uniform_float('color', (0.15, 0.15, 0.15, 0.15))
         batch = batch_for_shader(
             shader_2d, 'TRIS',
             {
-                "pos": get_verts(10, 10, self.width, self.height, 5)
+                "pos": get_verts(*start, self.width, self.height, 5)
             },
             indices=indices)
         batch.draw(shader_2d)
@@ -181,7 +225,7 @@ class CameraThumb():
         border_batch = batch_for_shader(
             shader_2d, 'TRIS',
             {
-                "pos": get_verts(10, 10, self.width, self.height, 1)
+                "pos": get_verts(*start, self.width, self.height, 1)
             },
             indices=indices)
         border_batch.draw(shader_2d)
