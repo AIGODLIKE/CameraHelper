@@ -2,7 +2,7 @@ from .bl_ui_widget import BL_UI_Widget
 
 import gpu
 import blf
-import bgl
+# import bgl
 import bpy
 from gpu_extras.batch import batch_for_shader
 from . import wrap_gpu_state
@@ -130,35 +130,41 @@ class BL_UI_Button(BL_UI_Widget):
         blf.draw(0, self._text)
 
     def draw_image(self):
-        if self.__image is not None:
-            try:
-                y_screen_flip = self.get_area_height() - self.y_screen
+        if self.__image is None:
+            return
+        try:
+            off_x = self.over_scale(self._image_position[0])
+            off_y = self.over_scale(self._image_position[1])
 
-                off_x, off_y = self.__image_position
-                sx, sy = self.__image_size
+            sx = self.over_scale(self._image_size[0])
+            sy = self.over_scale(self._image_size[1])
 
-                # bottom left, top left, top right, bottom right
-                vertices = (
-                    (self.x_screen + off_x, y_screen_flip - off_y),
-                    (self.x_screen + off_x, y_screen_flip - sy - off_y),
-                    (self.x_screen + off_x + sx, y_screen_flip - sy - off_y),
-                    (self.x_screen + off_x + sx, y_screen_flip - off_y))
+            x_screen = self.over_scale(self.x_screen)
+            y_screen = self.over_scale(self.y_screen)
 
-                self.shader_img = gpu.shader.from_builtin('2D_IMAGE')
-                self.batch_img = batch_for_shader(self.shader_img, 'TRI_FAN',
-                                                  {"pos": vertices,
-                                                   "texCoord": ((0, 1), (0, 0), (1, 0), (1, 1))
-                                                   }, )
+            texture = gpu.texture.from_image(self._image)
 
-                bgl.glActiveTexture(bgl.GL_TEXTURE0)
-                bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.__image.bindcode)
+            # Bottom left, top left, top right, bottom right
+            vertices = ((x_screen + off_x, y_screen - off_y),
+                        (x_screen + off_x, y_screen - sy - off_y),
+                        (x_screen + off_x + sx, y_screen - sy - off_y),
+                        (x_screen + off_x + sx, y_screen - off_y))
 
-                self.shader_img.bind()
-                self.shader_img.uniform_int("image", 0)
-                self.batch_img.draw(self.shader_img)
-                return True
-            except:
-                pass
+            self.shader_img = gpu.shader.from_builtin('2D_IMAGE')
+            self.batch_img = batch_for_shader(self.shader_img,
+                                              'TRI_FAN', {"pos": vertices,
+                                                          "texCoord": ((0, 1), (0, 0), (1, 0), (1, 1)), },
+                                              )
+            # import bgl
+            # bgl.glActiveTexture(bgl.GL_TEXTURE0)
+            # bgl.glBindTexture(bgl.GL_TEXTURE_2D, self._image.bindcode)
+
+            self.shader_img.bind()
+            # self.shader_img.uniform_int("image", 0)
+            self.shader_img.uniform_sampler("image", texture)
+            self.batch_img.draw(self.shader_img)
+        except Exception as e:
+            pass
 
         return False
 

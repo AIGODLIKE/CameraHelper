@@ -125,14 +125,17 @@ class BL_UI_Slider(BL_UI_Widget):
 
         # Draw background
         self.shader.uniform_float("color", self._bg_color)
-        bgl.glEnable(bgl.GL_BLEND)
+        # bgl.glEnable(bgl.GL_BLEND)
+        gpu.state.blend_set('ALPHA')
         self.batch_bg.draw(self.shader)
 
         # Draw slider   
         self.shader.uniform_float("color", color)
 
         self.batch_slider.draw(self.shader)
-        bgl.glDisable(bgl.GL_BLEND)
+        # bgl.glDisable(bgl.GL_BLEND)
+        gpu.state.blend_set('None')
+
 
         # Draw value text
         blf.size(0, self._text_size, 72)

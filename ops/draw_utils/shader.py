@@ -1,4 +1,4 @@
-import bgl
+# import bgl
 import gpu
 import bpy
 
@@ -104,8 +104,7 @@ class CameraMotionPath():
 
         # if context.object.motion_cam.path_points == '': return
 
-        with wrap_bgl_restore(width=1):
-            bgl.glLineWidth(get_pref().draw_motion_curve.width)
+        with wrap_bgl_restore(width=get_pref().draw_motion_curve.width):
             shader_3d.bind()
             shader_3d.uniform_float("color", get_pref().draw_motion_curve.color)
             batch = batch_for_shader(shader_3d, 'LINES', {"pos": draw_points})
