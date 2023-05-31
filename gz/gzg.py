@@ -28,7 +28,7 @@ class GizmoGroupBase:
 
     def draw_prepare(self, context):
         # ui scale
-        ui_scale = context.preferences.view.ui_scale
+        ui_scale = context.preferences.system.dpi / 72
         region = context.region
 
         step = 40 * ui_scale
