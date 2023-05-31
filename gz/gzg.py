@@ -31,7 +31,7 @@ class GizmoGroupBase:
         ui_scale = context.preferences.system.dpi / 72
         region = context.region
 
-        step = 40 * ui_scale
+        step = 30 * ui_scale
         icon_scale = (80 * 0.35) / 2  # 14
         # 从屏幕右侧起
         start_x = region.width - (icon_scale * ui_scale + step) / 2
