@@ -125,6 +125,15 @@ def get_geo_node_group(filename='process.blend', node_group=C_GET_CURVE_ATTR):
 
     return ng
 
+def create_tool_collection(name = 'CameraHelper'):
+    if name not in bpy.data.collections:
+        coll = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(coll)
+    coll = bpy.data.collections['CameraHelper']
+    coll.hide_viewport = False
+    coll.hide_render = False
+
+    return coll
 
 def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, close_spline=False, type='SMOOTH'):
     """根据点集生成贝塞尔曲线
@@ -183,7 +192,8 @@ def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, clos
     # 创建物体
     curve_obj = bpy.data.objects.new(curve_name, curve_data)
     # 链接到场景(否则物体将不会更新)
-    coll = bpy.context.collection
+    # coll = bpy.context.collection
+    coll = create_tool_collection()
     coll.objects.link(curve_obj)
 
     return curve_obj
@@ -229,7 +239,8 @@ def gen_curve_sample_obj(curve_obj, postfix='_sample', node_group=C_GET_CURVE_AT
     # 设置输入物体
     mod["Input_2"] = curve_obj
 
-    coll = bpy.context.collection
+    # coll = bpy.context.collection
+    coll = create_tool_collection()
     coll.objects.link(tmp_obj)
 
     return tmp_obj
