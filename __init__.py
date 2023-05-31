@@ -1,9 +1,9 @@
 bl_info = {
     "name": "Camera Helper",
-    "author": "幻之境科技 (开发:Atticus)",
+    "author": "AIGODLIKE社区(开发:Atticus)",
     "blender": (3, 4, 0),
-    "version": (1, 0),
-    "category": "幻之境",
+    "version": (1, 1),
+    "category": "辣椒出品",
     "support": "COMMUNITY",
     "doc_url": "",
     "tracker_url": "",
