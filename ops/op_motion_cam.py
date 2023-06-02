@@ -913,6 +913,8 @@ class CAMHP_PT_MotionCamPanel(Panel):
                 warn = sub.column()
                 warn.alert = True
                 warn.label(text='There is no camera as child of this object')
+            else:
+                sub.active = affect.use_sub_camera
         else:
             sub.active = True
 
