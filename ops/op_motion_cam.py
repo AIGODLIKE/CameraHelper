@@ -13,6 +13,7 @@ G_STATE_UPDATE = False  # 用于保护曲线更新的状态
 # 绕过blender更新bug
 G_PROPS = {}
 
+
 def parse_data_path(src_obj, scr_data_path):
     """解析来自用户的data_path
 
@@ -247,9 +248,12 @@ def gen_cam_path(self, context):
 def get_offset_factor(self):
     return self.get('offset_factor', 0.0)
 
-def _update_cam(self,context):
+
+def _update_cam(self, context):
     if G_STATE_UPDATE: return
     update_cam(self.id_data, self.id_data.motion_cam.offset_factor)
+
+
 def update_cam(obj, val):
     if 'Motion Camera' not in obj.constraints:
         return
@@ -763,7 +767,7 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
         return {'PASS_THROUGH'}
 
     def invoke(self, context, event):
-        print('invoke')
+        # print('invoke')
         wm = context.window_manager
         m_cam = context.object.motion_cam
         affect = m_cam.affect
@@ -779,8 +783,17 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
             cam = None
 
         if cam is None:
-            self.report({'ERROR'}, "No camera found")
+            self.report({'ERROR'}, "无相机")
             return {'CANCELLED'}
+
+        action = m_cam.id_data.animation_data.action
+
+        if action is None:
+            self.report({'ERROR'}, "无动作")
+            return {'CANCELLED'}
+
+        self.frame_start = int(action.frame_range[0])
+        self.frame_end = int(action.frame_range[1])
 
         name = cam.name + '_bake'
         data_name = cam.data.name + '_bake'
