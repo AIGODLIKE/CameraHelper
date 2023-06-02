@@ -425,5 +425,5 @@ def unregister():
     bpy.utils.unregister_class(CAMHP_OT_rotate_object)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_1d)
     bpy.utils.unregister_class(CAMHP_GT_custom_move_3d)
-    bpy.utils.register_class(CAMHP_GT_custom_rotate_1d)
+    bpy.utils.unregister_class(CAMHP_GT_custom_rotate_1d)
     bpy.utils.unregister_class(CAMHP_UI_motion_curve_gz)
