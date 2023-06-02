@@ -62,12 +62,12 @@ def get_interpolate_euler(from_obj, to_obj, fac):
 
 def get_interpolate_lens(from_obj, to_obj, fac):
     G_PROPS['lens'] = mix_value(from_obj.data.lens, to_obj.data.lens, fac)
-    # print(G_PROPS['lens'])
-    return mix_value(from_obj.data.lens, to_obj.data.lens, fac)
+    return G_PROPS['lens']
 
 
 def get_interpolate_fstop(from_obj, to_obj, fac):
-    return mix_value(from_obj.data.dof.aperture_fstop, to_obj.data.dof.aperture_fstop, fac)
+    G_PROPS['fstop'] = mix_value(from_obj.data.dof.aperture_fstop, to_obj.data.dof.aperture_fstop, fac)
+    return G_PROPS['fstop']
 
 
 def get_interpolate_focal(from_obj, to_obj, fac):
@@ -80,7 +80,8 @@ def get_interpolate_focal(from_obj, to_obj, fac):
 
         return dis
 
-    return mix_value(get_focus_dis(from_obj), get_focus_dis(to_obj), fac)
+    G_PROPS['focal'] = mix_value(get_focus_dis(from_obj), get_focus_dis(to_obj), fac)
+    return G_PROPS['focal']
 
 
 def interpolate_cam(tg_obj, from_obj, to_obj, fac):
@@ -123,34 +124,34 @@ def interpolate_cam(tg_obj, from_obj, to_obj, fac):
             cam.data.lens = get_interpolate_lens(from_obj, to_obj, fac)
         if use_aperture_fstop:
             cam.data.dof.aperture_fstop = get_interpolate_fstop(from_obj, to_obj, fac)
-        if use_focus_distance and cam.data.dof.use_dof:
+        if use_focus_distance:
             cam.data.dof.focus_distance = get_interpolate_focal(from_obj, to_obj, fac)
 
-    # 自定义
-    for item in affect.custom_props:
-        if item.data_path == '': continue
-
-        src_obj, src_attr = parse_data_path(cam.data, item.data_path)
-        _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
-        _to_obj, to_attr = parse_data_path(to_obj.data, item.data_path)
-        if from_attr is None or to_attr is None or src_attr is None: continue
-
-        from_value = getattr(_from_obj, from_attr)
-        to_value = getattr(_to_obj, to_attr)
-
-        try:
-            if isinstance(from_value, float):
-                setattr(src_obj, src_attr, mix_value(from_value, to_value, fac))
-            elif isinstance(from_value, mathutils.Vector):
-                setattr(src_obj, src_attr, from_value.copy().lerp(to_value, fac))
-            elif isinstance(from_value, mathutils.Matrix):
-                setattr(src_obj, src_attr, from_value.copy().lerp(to_value, fac))
-            elif isinstance(from_value, bool):
-                setattr(src_obj, src_attr, from_value)
-            elif isinstance(from_value, bpy.types.Object):
-                setattr(src_obj, src_attr, from_value)
-        except Exception as e:
-            print(e)
+    # # 自定义
+    # for item in affect.custom_props:
+    #     if item.data_path == '': continue
+    #
+    #     src_obj, src_attr = parse_data_path(cam.data, item.data_path)
+    #     _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
+    #     _to_obj, to_attr = parse_data_path(to_obj.data, item.data_path)
+    #     if from_attr is None or to_attr is None or src_attr is None: continue
+    #
+    #     from_value = getattr(_from_obj, from_attr)
+    #     to_value = getattr(_to_obj, to_attr)
+    #
+    #     try:
+    #         if isinstance(from_value, float):
+    #             setattr(src_obj, src_attr, mix_value(from_value, to_value, fac))
+    #         elif isinstance(from_value, mathutils.Vector):
+    #             setattr(src_obj, src_attr, from_value.copy().lerp(to_value, fac))
+    #         elif isinstance(from_value, mathutils.Matrix):
+    #             setattr(src_obj, src_attr, from_value.copy().lerp(to_value, fac))
+    #         elif isinstance(from_value, bool):
+    #             setattr(src_obj, src_attr, from_value)
+    #         elif isinstance(from_value, bpy.types.Object):
+    #             setattr(src_obj, src_attr, from_value)
+    #     except Exception as e:
+    #         print(e)
 
 
 def gen_cam_path(self, context):
@@ -725,44 +726,44 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
                 ob.data.keyframe_insert('lens')
 
             if affect.use_focus_distance:
-                ob.data.dof.focus_distance = cam.data.dof.focus_distance
+                ob.data.dof.focus_distance = G_PROPS['focal']
                 ob.data.dof.keyframe_insert('focus_distance')
 
             if affect.use_aperture_fstop:
-                ob.data.dof.aperture_fstop = cam.data.dof.aperture_fstop
+                ob.data.dof.aperture_fstop = G_PROPS['fstop']
                 ob.data.dof.keyframe_insert('aperture_fstop')
 
             # 自定义属性
-            for item in affect.custom_props:
-                if item.data_path == '': continue
-
-                tg_obj = ob
-                from_obj = context.object
-
-                src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
-                _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
-                if from_attr is None or src_attr is None or src_obj is None: continue
-
-                from_value = getattr(_from_obj, from_attr)
-
-                try:
-                    if isinstance(from_value, float):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, mathutils.Vector):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, mathutils.Matrix):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, bool):
-                        setattr(src_obj, src_attr, from_value)
-                    elif isinstance(from_value, bpy.types.Object):
-                        setattr(src_obj, src_attr, from_value)
-
-                    if hasattr(src_obj, 'keyframe_insert'):
-                        kf = getattr(src_obj, 'keyframe_insert')
-                        kf(src_attr)
-
-                except Exception as e:
-                    print(e)
+            # for item in affect.custom_props:
+            #     if item.data_path == '': continue
+            #
+            #     tg_obj = ob
+            #     from_obj = context.object
+            #
+            #     src_obj, src_attr = parse_data_path(tg_obj.data, item.data_path)
+            #     _from_obj, from_attr = parse_data_path(from_obj.data, item.data_path)
+            #     if from_attr is None or src_attr is None or src_obj is None: continue
+            #
+            #     from_value = getattr(_from_obj, from_attr)
+            #
+            #     try:
+            #         if isinstance(from_value, float):
+            #             setattr(src_obj, src_attr, from_value)
+            #         elif isinstance(from_value, mathutils.Vector):
+            #             setattr(src_obj, src_attr, from_value)
+            #         elif isinstance(from_value, mathutils.Matrix):
+            #             setattr(src_obj, src_attr, from_value)
+            #         elif isinstance(from_value, bool):
+            #             setattr(src_obj, src_attr, from_value)
+            #         elif isinstance(from_value, bpy.types.Object):
+            #             setattr(src_obj, src_attr, from_value)
+            #
+            #         if hasattr(src_obj, 'keyframe_insert'):
+            #             kf = getattr(src_obj, 'keyframe_insert')
+            #             kf(src_attr)
+            #
+            #     except Exception as e:
+            #         print(e)
 
         return {'PASS_THROUGH'}
 
