@@ -46,7 +46,7 @@ class CAMHP_PT_pop_cam_pv_panel(pop_cam_panel):
 
 
 class CAMHP_OT_campv_popup(bpy.types.Operator):
-    """Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera"""
+    """Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera\nCtrl Shift Click: Send to Viewer"""
     bl_idname = "camhp.campv_popup"
     bl_label = "Preview"
 
