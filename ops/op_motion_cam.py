@@ -604,7 +604,7 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
             if obj.type != 'CAMERA': continue
 
             loc = get_obj_2d_loc(obj, bpy.context)
-            if loc is None: continue # 相机处于较远的位置
+            if loc is None: continue  # 相机处于较远的位置
             x, y = loc
 
             btn = BL_UI_Button(x, y, 120, 30)
@@ -786,6 +786,10 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
 
         if cam is None:
             self.report({'ERROR'}, "无相机")
+            return {'CANCELLED'}
+
+        if m_cam.id_data.animation_data is None:
+            self.report({'ERROR'}, "无动画")
             return {'CANCELLED'}
 
         action = m_cam.id_data.animation_data.action
