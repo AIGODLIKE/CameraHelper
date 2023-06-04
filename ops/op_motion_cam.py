@@ -561,9 +561,8 @@ from bpy.app.translations import pgettext_iface as tip_
 
 def get_obj_2d_loc(obj, context):
     r3d = context.space_data.region_3d
-
-    x, y = location_3d_to_region_2d(context.region, r3d, obj.matrix_world.translation)
-    return x, y
+    loc = location_3d_to_region_2d(context.region, r3d, obj.matrix_world.translation)
+    return loc
 
 
 class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
@@ -604,7 +603,9 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         for obj in bpy.context.view_layer.objects:
             if obj.type != 'CAMERA': continue
 
-            x, y = get_obj_2d_loc(obj, bpy.context)
+            loc = get_obj_2d_loc(obj, bpy.context)
+            if loc is None: continue # 相机处于较远的位置
+            x, y = loc
 
             btn = BL_UI_Button(x, y, 120, 30)
             btn.bg_color = (0.1, 0.1, 0.1, 0.8)
