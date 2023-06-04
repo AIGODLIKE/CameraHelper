@@ -146,11 +146,9 @@ class CameraThumb():
             self.height = int(self.width / self.ratio)
 
     def update_cam(self, context):
-        cam = None
-
         if context.scene.camhp_pv.pin:
             cam = context.scene.camhp_pv.pin_cam
-        if cam is None:
+        else:
             cam = context.object
 
         self.cam = cam

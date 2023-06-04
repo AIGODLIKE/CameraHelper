@@ -185,7 +185,10 @@ class CAMHP_OT_add_view_cam(Operator):
         cam.data.show_name = True
         # 进入视图
         context.scene.camera = cam
-        bpy.ops.view3d.camera_to_view()
+        try:
+            bpy.ops.view3d.camera_to_view()
+        except:
+            pass
 
         area = context.area
         r3d = area.spaces[0].region_3d
