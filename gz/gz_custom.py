@@ -236,11 +236,13 @@ class CAMHP_GT_custom_move_3d(GizmoBase3D, Gizmo):
     )
 
     def _update_offset_matrix(self):
-        x, y, z = self.target_get_value("offset")
-        self.matrix_offset.col[3][0] = x
-        self.matrix_offset.col[3][1] = y
-        self.matrix_offset.col[3][2] = z
-
+        try:
+            x, y, z = self.target_get_value("offset")
+            self.matrix_offset.col[3][0] = x
+            self.matrix_offset.col[3][1] = y
+            self.matrix_offset.col[3][2] = z
+        except ValueError:
+            pass
     def setup(self):
         if not hasattr(self, "custom_shape"):
             pref_gz = get_pref().gz_motion_source
