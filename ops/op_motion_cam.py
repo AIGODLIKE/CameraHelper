@@ -619,6 +619,11 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
 
             self.buttons.append(btn)
 
+    def cancel(self, context):
+        if getattr(self, 'new_cam', None) is not None:
+            bpy.data.objects.remove(self.new_cam)
+        return {'CANCELLED'}
+
     def on_invoke(self, context, event):
         widgets_panel = [self.label_tip1, self.label_tip2, self.label_tip3]
         widgets = [self.panel]
@@ -636,6 +641,7 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         cam_data = bpy.data.cameras.new(name='Camera')
         cam = bpy.data.objects.new('Camera', cam_data)
         empty = bpy.data.objects.new('Empty', None)
+        self.new_cam = cam
 
         context.collection.objects.link(cam)
         context.collection.objects.link(empty)
@@ -664,14 +670,15 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
     def modal(self, context, event):
 
         for i, btn in enumerate(self.buttons):
-            if hasattr(btn, 'bind_obj'):
-                obj_name = getattr(btn, 'bind_obj')
-                obj = bpy.data.objects.get(obj_name)
+            if not hasattr(btn, 'bind_obj'): continue
 
-                if obj:
-                    x, y = get_obj_2d_loc(obj, context)
-                    btn.update(x, y)
-                    context.area.tag_redraw()
+            obj_name = getattr(btn, 'bind_obj')
+            obj = bpy.data.objects.get(obj_name)
+
+            if obj is None: continue
+            x, y = get_obj_2d_loc(obj, context)
+            btn.update(x, y)
+            context.area.tag_redraw()
 
         return super().modal(context, event)
 

@@ -72,6 +72,9 @@ class BL_UI_OT_draw_operator(Operator):
         if event.type in {"RIGHTMOUSE"} and event.value == 'PRESS':
             self.finish()
 
+        if event.type in {"ESC"}:
+            return {'CANCELLED'}
+
         elif event.type in {"MIDDLEMOUSE", "WHEELUPMOUSE", "WHEELDOWNMOUSE"}:
             return {"PASS_THROUGH"}
 

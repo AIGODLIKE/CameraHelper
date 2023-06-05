@@ -171,6 +171,7 @@ class CAMHP_OT_add_view_cam(Operator):
     """Add View Camera\nCtrl Left Click: Add Motion Camera"""
     bl_idname = 'camhp.add_view_cam'
     bl_label = 'Add View Camera'
+    bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
@@ -185,6 +186,7 @@ class CAMHP_OT_add_view_cam(Operator):
         cam.data.show_name = True
         # 进入视图
         context.scene.camera = cam
+        context.view_layer.objects.active = cam
         try:
             bpy.ops.view3d.camera_to_view()
         except:
@@ -201,7 +203,8 @@ class CAMHP_OT_add_view_cam(Operator):
     def invoke(self, context, event):
         if event.ctrl:
             bpy.ops.camhp.add_motion_cams('INVOKE_DEFAULT')
-            return {'INTERFACE'}
+            bpy.ops.ed.undo_push()
+            return {'FINISHED'}
         else:
             return self.execute(context)
 
