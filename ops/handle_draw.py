@@ -113,7 +113,7 @@ def is_select_obj(context):
             context and
             hasattr(context, 'object') and
             context.object and
-            context.object.type in {'CAMERA',}
+            context.object.type in {'CAMERA','EMPTY'}
     )
 
 
