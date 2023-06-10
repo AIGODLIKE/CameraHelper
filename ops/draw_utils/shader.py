@@ -11,8 +11,6 @@ from gpu_extras.batch import batch_for_shader
 from ..utils import get_mesh_obj_coords
 from ...prefs.get_pref import get_pref
 
-shader_3d = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-shader_2d = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
 
 WIDTH = 512
 HEIGHT = 256
@@ -22,6 +20,20 @@ indices = ((0, 1, 2), (2, 1, 3))
 
 from . import wrap_bgl_restore
 
+def get_shader(type = '3d'):
+    shader_3d = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+    shader_2d = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+    shader_debug = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+    shader_tex = gpu.shader.from_builtin('2D_IMAGE')
+
+    if type == '3d':
+        return shader_3d
+    elif type == '2d':
+        return shader_2d
+    elif type == 'debug':
+        return shader_debug
+    elif type == 'tex':
+        return shader_tex
 
 def get_start_point(thumb_width, thumb_height):
     padding = 10
@@ -105,6 +117,8 @@ class CameraMotionPath():
         # if context.object.motion_cam.path_points == '': return
 
         with wrap_bgl_restore(width=get_pref().draw_motion_curve.width):
+
+            shader_3d =get_shader('3d')
             shader_3d.bind()
             shader_3d.uniform_float("color", get_pref().draw_motion_curve.color)
             batch = batch_for_shader(shader_3d, 'LINES', {"pos": draw_points})
@@ -198,6 +212,7 @@ class CameraThumb():
         # bgl.glEnable(bgl.GL_BLEND)
         # bgl.glEnable(bgl.GL_LINE_SMOOTH)
         # bgl.glEnable(bgl.GL_DEPTH_TEST)
+        shader_2d = get_shader('2d')
         shader_2d.bind()
         start = get_start_point(self.width, self.height)
         # shadow
