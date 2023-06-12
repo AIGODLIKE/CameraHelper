@@ -129,6 +129,11 @@ def draw_handle(scene, depsgraph):
     else:
         clear_handle()
 
+def load_file_clear_handle():
+    global G_HANDLE_CURVE, G_HANDLE_CAM_PV
+    global G_INST_CURVE, G_INST_CAM_PV
+
+    clear_handle()
 
 class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
     """Snap Shot"""
@@ -195,10 +200,12 @@ def register():
 
     bpy.app.handlers.depsgraph_update_post.append(draw_handle)
 
+    bpy.app.handlers.load_pre.append(load_file_clear_handle)
 
 def unregister():
     clear_handle()
     bpy.app.handlers.depsgraph_update_post.remove(draw_handle)
+    bpy.app.handlers.load_pre.remove(load_file_clear_handle)
 
     del bpy.types.Scene.camhp_pv
     del bpy.types.Scene.camhp_snap_shot_image
