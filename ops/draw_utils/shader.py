@@ -55,7 +55,7 @@ def get_start_point(thumb_width, thumb_height):
         top = False
 
     ui_width = toolbar_width = header_height = tool_header_height = 0
-    if area.spaces[0].show_region_toolbar and bpy.context.preferences.system.use_region_overlap:
+    if bpy.context.preferences.system.use_region_overlap:
         for region in area.regions:
             if region.type == 'UI':
                 ui_width = region.width
