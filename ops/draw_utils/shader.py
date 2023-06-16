@@ -11,7 +11,6 @@ from gpu_extras.batch import batch_for_shader
 from ..utils import get_mesh_obj_coords
 from ...prefs.get_pref import get_pref
 
-
 WIDTH = 512
 HEIGHT = 256
 PADDING = 20
@@ -20,7 +19,8 @@ indices = ((0, 1, 2), (2, 1, 3))
 
 from . import wrap_bgl_restore
 
-def get_shader(type = '3d'):
+
+def get_shader(type='3d'):
     shader_3d = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
     shader_2d = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
     shader_debug = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
@@ -34,6 +34,7 @@ def get_shader(type = '3d'):
         return shader_debug
     elif type == 'tex':
         return shader_tex
+
 
 def get_start_point(thumb_width, thumb_height):
     padding = 10
@@ -101,7 +102,11 @@ class CameraMotionPath():
         if path is None or path_attr is None or path_mesh is None:
             return
 
-        points = get_mesh_obj_coords(context, path_mesh, self.deps)
+        try:
+            points = get_mesh_obj_coords(context, path_mesh, self.deps)
+        except Exception as e:
+            print(e)
+            return
         # print(points)
         if len(points) == 0:
             return
@@ -118,7 +123,7 @@ class CameraMotionPath():
 
         with wrap_bgl_restore(width=get_pref().draw_motion_curve.width):
 
-            shader_3d =get_shader('3d')
+            shader_3d = get_shader('3d')
             shader_3d.bind()
             shader_3d.uniform_float("color", get_pref().draw_motion_curve.color)
             batch = batch_for_shader(shader_3d, 'LINES', {"pos": draw_points})
@@ -133,7 +138,7 @@ class CameraThumb():
         self.offscreen = gpu.types.GPUOffScreen(WIDTH, HEIGHT)
         self.cam = None
         self.buffer = None
-        self.snapshot = context.scene.camhp_snap_shot_image
+        self.snapshot = context.window_manager.camhp_snap_shot_image
 
         self.max_width = get_pref().camera_thumb.max_width
         self.max_height = get_pref().camera_thumb.max_height
@@ -145,13 +150,13 @@ class CameraThumb():
         self.draw(context)
 
     def draw(self, context):
-        if context.scene.camhp_pv.enable:
+        if context.window_manager.camhp_pv.enable:
             self.draw_border(context)
             self.draw_camera_thumb(context)
 
     def update_resolution(self, context):
-        max_height = self.max_width
-        max_width = self.max_height
+        max_height = get_pref().camera_thumb.max_width
+        max_width = get_pref().camera_thumb.max_height
         self.height = max_height
         self.ratio = context.scene.render.resolution_x / context.scene.render.resolution_y
         self.width = int(self.height * self.ratio)
@@ -160,46 +165,55 @@ class CameraThumb():
             self.height = int(self.width / self.ratio)
 
     def update_cam(self, context):
-        if context.scene.camhp_pv.pin:
-            cam = context.scene.camhp_pv.pin_cam
-        else:
-            cam = context.object
+        try:
+            if context.window_manager.camhp_pv.pin:
 
-        self.cam = cam
+                cam = context.window_manager.camhp_pv.pin_cam
+
+            else:
+                cam = context.object
+
+            self.cam = cam
+        except ReferenceError:
+            # delete class
+            context.window_manager.camhp_pv.pin = False
 
     def draw_camera_thumb(self, context):
-        self.update_cam(context)
-        self.update_resolution(context)
+        try:
+            self.update_cam(context)
+            self.update_resolution(context)
 
-        show_overlay = False
-        scene = context.scene
-        # matrix
-        view_matrix = self.cam.matrix_world.inverted()
-        projection_matrix = self.cam.calc_matrix_camera(self.deps, x=self.width, y=self.height)
-        # set space data
-        ori_show_overlay = context.space_data.overlay.show_overlays
-        context.space_data.overlay.show_overlays = show_overlay
+            show_overlay = False
+            scene = context.scene
+            # matrix
+            view_matrix = self.cam.matrix_world.inverted()
+            projection_matrix = self.cam.calc_matrix_camera(self.deps, x=self.width, y=self.height)
+            # set space data
+            ori_show_overlay = context.space_data.overlay.show_overlays
+            context.space_data.overlay.show_overlays = show_overlay
 
-        self.offscreen.draw_view3d(
-            scene,
-            context.view_layer,
-            context.space_data,
-            context.region,
-            view_matrix,
-            projection_matrix,
-            do_color_management=False)
-        gpu.state.depth_mask_set(False)
-        context.space_data.overlay.show_overlays = ori_show_overlay
-        start = get_start_point(self.width, self.height)
-        draw_texture_2d(self.offscreen.texture_color, start, self.width, self.height)
+            self.offscreen.draw_view3d(
+                scene,
+                context.view_layer,
+                context.space_data,
+                context.region,
+                view_matrix,
+                projection_matrix,
+                do_color_management=False)
+            gpu.state.depth_mask_set(False)
+            context.space_data.overlay.show_overlays = ori_show_overlay
+            start = get_start_point(self.width, self.height)
+            draw_texture_2d(self.offscreen.texture_color, start, self.width, self.height)
 
-        framebuffer = gpu.state.active_framebuffer_get()
-        buffer = framebuffer.read_color(*start, self.width, self.height, 4, 0, 'FLOAT')
-        buffer.dimensions = self.width * self.height * 4
-        self.buffer = buffer
+            framebuffer = gpu.state.active_framebuffer_get()
+            buffer = framebuffer.read_color(*start, self.width, self.height, 4, 0, 'FLOAT')
+            buffer.dimensions = self.width * self.height * 4
+            self.buffer = buffer
 
-        # restore
-        context.space_data.overlay.show_overlays = ori_show_overlay
+            # restore
+            context.space_data.overlay.show_overlays = ori_show_overlay
+        except Exception as e:
+            print(e)
 
     def draw_border(self, context):
         border_color = (0.5, 0.5, 0.5, 1)

@@ -105,11 +105,11 @@ class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
         self.gz_cam_pv = gz
 
     def refresh(self, context):
-        if context.scene.camhp_pv.enable:
+        if context.window_manager.camhp_pv.enable:
             self.gz_cam_pv.color = 0.08, 0.6, 0.08
             self.gz_cam_pv.color_highlight = 0.28, 0.8, 0.28
 
-            if context.scene.camhp_pv.pin:
+            if context.window_manager.camhp_pv.pin:
                 self.gz_cam_pv.color = 0.8, 0.2, 0.2
                 self.gz_cam_pv.color_highlight = 1, 0.2, 0.2
         else:
@@ -266,25 +266,28 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
             gz.use_draw_scale = False
 
             self.gz_motion_cam = gz
+        try:
+            for gz in self._move_gz.keys():
+                self.gizmos.remove(gz)
 
-        for gz in self._move_gz.keys():
-            self.gizmos.remove(gz)
 
-        for gz in self._rotate_gz.keys():
-            self.gizmos.remove(gz)
+            for gz in self._rotate_gz.keys():
+                self.gizmos.remove(gz)
+        except ReferenceError: # new file open
+            pass
 
         self._move_gz.clear()
         self._rotate_gz.clear()
         self._gz_axis.clear()
 
-        for index, item in enumerate(context.object.motion_cam.list):
-            item = context.object.motion_cam.list[index]
-
-            self.add_move_gz(index, item)
-
-            self.add_rotate_gz(item, 'X')
-            self.add_rotate_gz(item, 'Y')
-            self.add_rotate_gz(item, 'Z')
+        # for index, item in enumerate(context.object.motion_cam.list):
+        #     item = context.object.motion_cam.list[index]
+        #
+        #     self.add_move_gz(index, item)
+        #
+        #     self.add_rotate_gz(item, 'X')
+        #     self.add_rotate_gz(item, 'Y')
+        #     self.add_rotate_gz(item, 'Z')
 
         self.correct_rotate_gz_euler()
 
