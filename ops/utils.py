@@ -24,7 +24,7 @@ def meas_time(func):
         t = time.time()
         func(*args, **kwargs)
         end = time.time()
-        print(f'函数 "{func.__name__}" 花费 {(end - t) * 1000}ms')
+        # print(f'函数 "{func.__name__}" 花费 {(end - t) * 1000}ms')
 
     return wrapper
 

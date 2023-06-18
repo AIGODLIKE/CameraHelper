@@ -270,24 +270,24 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
             for gz in self._move_gz.keys():
                 self.gizmos.remove(gz)
 
-
             for gz in self._rotate_gz.keys():
                 self.gizmos.remove(gz)
-        except ReferenceError: # new file open
+        except ReferenceError:  # new file open
             pass
 
         self._move_gz.clear()
         self._rotate_gz.clear()
         self._gz_axis.clear()
 
-        # for index, item in enumerate(context.object.motion_cam.list):
-        #     item = context.object.motion_cam.list[index]
-        #
-        #     self.add_move_gz(index, item)
-        #
-        #     self.add_rotate_gz(item, 'X')
-        #     self.add_rotate_gz(item, 'Y')
-        #     self.add_rotate_gz(item, 'Z')
+        for index, item in enumerate(context.object.motion_cam.list):
+            item = context.object.motion_cam.list[index]
+
+            self.add_move_gz(index, item)
+            # print('Add gizmo')
+            # TODO 移除gizmo以避免崩溃。 Blender报错：EXCEPTION_ACCESS_VIOLATION，联系官方处理中
+            # self.add_rotate_gz(item, 'X')
+            # self.add_rotate_gz(item, 'Y')
+            # self.add_rotate_gz(item, 'Z')
 
         self.correct_rotate_gz_euler()
 
@@ -303,7 +303,7 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
                 rotate = Euler((0, 0, math.radians(90)), 'XYZ')
 
             cam = self._rotate_gz[gz]
-
+            # print('correct gizmo')
             rotate.rotate(cam.matrix_world.to_euler('XYZ'))
             gz.matrix_basis = rotate.to_matrix().to_4x4()
             gz.matrix_basis.translation = cam.matrix_world.translation
@@ -386,6 +386,7 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
                     self.gizmos.remove(gz)
 
                 for gz in self._rotate_gz.keys():
+                    # print('remove gizmo')
                     self.gizmos.remove(gz)
 
                 self._move_gz.clear()

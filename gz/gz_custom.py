@@ -273,6 +273,10 @@ class CAMHP_GT_custom_move_3d(GizmoBase3D, Gizmo):
                 layout.prop(d, 'lens')
                 layout.prop(d.dof, 'focus_distance')
                 layout.prop(d.dof, 'aperture_fstop')
+                # layout.separator()
+                # ob = self._camera
+                # col = layout.column()
+                # col.prop(ob, "rotation_euler", text="Rotation")
                 # layout.popover(panel='CAMHP_PT_MotionCamPanel')
 
             context.window_manager.popup_menu(pop_up, title=f'{self._camera.name}', icon='CAMERA_DATA')

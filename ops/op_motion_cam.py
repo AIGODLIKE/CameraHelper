@@ -825,7 +825,7 @@ class CAMHP_OT_bake_motion_cam(bpy.types.Operator):
         self.cam_bake = ob
         self.affect = affect
         self.euler_prev = None
-        print('invoke end')
+        # print('invoke end')
         self.timer = wm.event_timer_add(0.01, window=context.window)
         context.window_manager.modal_handler_add(self)
         return {"RUNNING_MODAL"}
