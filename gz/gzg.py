@@ -282,7 +282,7 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
         for index, item in enumerate(context.object.motion_cam.list):
             item = context.object.motion_cam.list[index]
 
-            self.add_move_gz(index, item)
+            # self.add_move_gz(index, item)
             # print('Add gizmo')
             # TODO 移除gizmo以避免崩溃。 Blender报错：EXCEPTION_ACCESS_VIOLATION，联系官方处理中
             # self.add_rotate_gz(item, 'X')
