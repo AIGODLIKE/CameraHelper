@@ -275,19 +275,20 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
         except ReferenceError:  # new file open
             pass
 
-        self._move_gz.clear()
-        self._rotate_gz.clear()
-        self._gz_axis.clear()
+        self._move_gz = dict()
+        self._rotate_gz = dict()
+        self._gz_axis = dict()
 
         for index, item in enumerate(context.object.motion_cam.list):
             item = context.object.motion_cam.list[index]
 
-            # self.add_move_gz(index, item)
+            self.add_move_gz(index, item)
             # print('Add gizmo')
             # TODO 移除gizmo以避免崩溃。 Blender报错：EXCEPTION_ACCESS_VIOLATION，联系官方处理中
-            # self.add_rotate_gz(item, 'X')
-            # self.add_rotate_gz(item, 'Y')
-            # self.add_rotate_gz(item, 'Z')
+            # TODO 已经解决，似乎是python的锅 https://projects.blender.org/blender/blender/issues/109111#issuecomment-963329
+            self.add_rotate_gz(item, 'X')
+            self.add_rotate_gz(item, 'Y')
+            self.add_rotate_gz(item, 'Z')
 
         self.correct_rotate_gz_euler()
 
@@ -389,8 +390,8 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
                     # print('remove gizmo')
                     self.gizmos.remove(gz)
 
-                self._move_gz.clear()
-                self._rotate_gz.clear()
+                self._move_gz = dict()
+                self._rotate_gz = dict()
 
         elif self.gz_motion_cam is None or update_gz:
             self.add_motion_cam_gz(context)
