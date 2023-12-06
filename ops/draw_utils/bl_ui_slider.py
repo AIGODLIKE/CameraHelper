@@ -1,5 +1,5 @@
 from .bl_ui_widget import *
-
+from .shader import get_shader,wrap_blf_size
 import blf
 
 
@@ -138,7 +138,7 @@ class BL_UI_Slider(BL_UI_Widget):
 
 
         # Draw value text
-        blf.size(0, self._text_size, 72)
+        wrap_blf_size(0,self._text_size)
 
         sValue = str(round(self.__slider_value, self._decimals))
         size = blf.dimensions(0, sValue)
@@ -195,7 +195,7 @@ class BL_UI_Slider(BL_UI_Widget):
             (pos_x + w, pos_y - h)
         )
 
-        self.shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+        self.shader = get_shader(type = '2d')
         self.batch_slider = batch_for_shader(self.shader, 'TRIS',
                                              {"pos": vertices}, indices=indices)
 

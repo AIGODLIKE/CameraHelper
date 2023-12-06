@@ -1,7 +1,7 @@
 import bpy
 
 from bpy.types import Operator
-
+from .shader import wrap_blf_size
 
 class BL_UI_OT_draw_operator(Operator):
     bl_idname = "object.bl_ui_ot_draw_operator"

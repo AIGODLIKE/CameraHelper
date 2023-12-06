@@ -396,7 +396,7 @@ def draw_lens_callback(self, context):
             x -= r.width
             break
 
-    blf.size(font_id, 20, 120)
+    wrap_blf.size(font_id,20)(font_id, 20, 120)
     blf.position(font_id, x, y, 0)
     blf.color(font_id, 1, 1, 1, 0.5)
     blf.draw(font_id, f"{int(context.scene.camera.data.lens)} mm")

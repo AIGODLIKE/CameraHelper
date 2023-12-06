@@ -1,4 +1,5 @@
 # import bgl
+import blf
 import gpu
 import bpy
 
@@ -21,10 +22,16 @@ from . import wrap_bgl_restore
 
 
 def get_shader(type='3d'):
-    shader_3d = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
-    shader_2d = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
-    shader_debug = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
-    shader_tex = gpu.shader.from_builtin('2D_IMAGE')
+    if bpy.app.version < (4, 0, 0):
+        shader_3d = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+        shader_2d = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+        shader_debug = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+        shader_tex = gpu.shader.from_builtin('2D_IMAGE')
+    else:
+        shader_3d = gpu.shader.from_builtin('UNIFORM_COLOR')
+        shader_2d = gpu.shader.from_builtin('UNIFORM_COLOR')
+        shader_debug = gpu.shader.from_builtin('UNIFORM_COLOR')
+        shader_tex = gpu.shader.from_builtin('IMAGE')
 
     if type == '3d':
         return shader_3d
@@ -34,6 +41,13 @@ def get_shader(type='3d'):
         return shader_debug
     elif type == 'tex':
         return shader_tex
+
+
+def wrap_blf_size(font_id: int, size):
+    if bpy.app.version >= (4, 0, 0):
+        blf.size(font_id, size)
+    else:
+        blf.size(font_id, size, 72)
 
 
 def get_start_point(thumb_width, thumb_height):

@@ -6,7 +6,7 @@ import blf
 import bpy
 from gpu_extras.batch import batch_for_shader
 from . import wrap_gpu_state
-
+from .shader import wrap_blf_size
 
 class BL_UI_Button(BL_UI_Widget):
 
@@ -118,7 +118,7 @@ class BL_UI_Button(BL_UI_Widget):
         self.shader.uniform_float("color", color)
 
     def draw_text(self, area_height):
-        blf.size(0, self._text_size, 72)
+        wrap_blf_size(0,self._text_size)
         size = blf.dimensions(0, self._text)
 
         textpos_y = area_height - self._textpos[1] - (self.height + size[1]) / 2.0

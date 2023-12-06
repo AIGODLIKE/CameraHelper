@@ -3,6 +3,7 @@ import bpy
 
 from gpu_extras.batch import batch_for_shader
 from . import wrap_gpu_state
+from .shader import get_shader
 
 class BL_UI_Widget:
 
@@ -83,7 +84,7 @@ class BL_UI_Widget:
                     (self.x_screen + self.width, y_screen_flip - self.height),
                     (self.x_screen + self.width, y_screen_flip))
 
-        self.shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+        self.shader = get_shader(type='2d')
         self.batch_panel = batch_for_shader(self.shader, 'TRIS', {"pos" : vertices}, indices=indices)
 
 
