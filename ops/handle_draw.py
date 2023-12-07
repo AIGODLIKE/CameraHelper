@@ -123,6 +123,7 @@ def is_select_obj(context):
             context.object.type in {'CAMERA', 'EMPTY'}
     )
 
+
 @persistent
 def draw_handle(scene, depsgraph):
     context = bpy.context
@@ -131,6 +132,7 @@ def draw_handle(scene, depsgraph):
         add_handle(context, depsgraph)
     else:
         clear_handle()
+
 
 @persistent
 def load_file_clear_handle(noob):

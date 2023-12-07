@@ -118,6 +118,10 @@ class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
 
         context.area.tag_redraw()
 
+    def draw_prepare(self, context):
+        super().draw_prepare(context)
+        self.refresh(context)
+
 
 class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
     bl_idname = "CAMHP_UI_cam_view"
