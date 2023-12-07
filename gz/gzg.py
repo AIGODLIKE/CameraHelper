@@ -4,6 +4,7 @@ from mathutils import Vector, Euler, Matrix
 from bpy.types import GizmoGroup, SpaceView3D, PropertyGroup
 
 from .gz_custom import GizmoInfo_2D
+from ..ops.draw_utils.shader import ui_scale as ui
 
 
 class GizmoGroupBase:
@@ -28,7 +29,7 @@ class GizmoGroupBase:
 
     def draw_prepare(self, context):
         # ui scale
-        ui_scale = context.preferences.system.dpi / 72
+        ui_scale = ui()
         region = context.region
 
         step = 30 * ui_scale

@@ -8,6 +8,7 @@ from mathutils import Vector
 from math import tan, radians, sqrt
 
 from .utils import Cam
+from .draw_utils.shader import wrap_blf_size,ui_scale
 
 
 class CAMHP_OT_move_view_between_cams(Operator):
@@ -396,7 +397,7 @@ def draw_lens_callback(self, context):
             x -= r.width
             break
 
-    wrap_blf.size(font_id,20)(font_id, 20, 120)
+    wrap_blf_size(font_id,30 * ui_scale())
     blf.position(font_id, x, y, 0)
     blf.color(font_id, 1, 1, 1, 0.5)
     blf.draw(font_id, f"{int(context.scene.camera.data.lens)} mm")
