@@ -78,7 +78,6 @@ def create_geo_shape(obj=None, type='TRIS', scale=1):
 
 
 class GizmoBase3D(Gizmo):
-    bl_idname = "CAMHP_GT_custom_move_3d"
     # The id must be "offset"
     bl_target_properties = (
         {"id": "offset", "type": 'FLOAT', "array_length": 1},
@@ -243,10 +242,19 @@ class CAMHP_GT_custom_move_3d(GizmoBase3D, Gizmo):
             self.matrix_offset.col[3][2] = z
         except ValueError:
             pass
+
+
     def setup(self):
         if not hasattr(self, "custom_shape"):
             pref_gz = get_pref().gz_motion_source
-            self.custom_shape = self.new_custom_shape('TRIS', create_geo_shape(scale=pref_gz.scale_basis))
+            shape_obj = load_shape_geo_obj('gz_shape_MOVE')
+            self.custom_shape = self.new_custom_shape('TRIS',
+                                                      create_geo_shape(obj=shape_obj, scale=pref_gz.scale_basis))
+
+            try:
+                bpy.data.objects.remove(shape_obj)
+            except:
+                pass
 
     def _projected_value(self, context, event):
         """用于光线投射

@@ -129,6 +129,10 @@ class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
 
     VIEW = 'CAMERA'
 
+    def draw_prepare(self, context):
+        super().draw_prepare(context)
+        self.refresh(context)
+
     def refresh(self, context):
         self.set_gz_lock(context)
         context.area.tag_redraw()
@@ -239,16 +243,19 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
             return False
 
     def draw_prepare(self, context):
-        pass
+        super().draw_prepare(context)
+        self.refresh(context)
 
     def setup(self, context):
-        self._move_gz.clear()
+        self._move_gz = dict()
+        self._rotate_gz =dict()
         self.gz_motion_cam = None
 
         self.cam_list = [item.camera for item in context.object.motion_cam.list]
 
         self.add_motion_cam_gz(context)
         self.draw_prepare(context)
+        print(self._move_gz)
 
     def add_motion_cam_gz(self, context):
         if self.gz_motion_cam is None:
@@ -288,7 +295,7 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
             item = context.object.motion_cam.list[index]
 
             self.add_move_gz(index, item)
-            # print('Add gizmo')
+            print('Add gizmo')
             # TODO 移除gizmo以避免崩溃。 Blender报错：EXCEPTION_ACCESS_VIOLATION，联系官方处理中
             # TODO 已经解决，似乎是python的锅 https://projects.blender.org/blender/blender/issues/109111#issuecomment-963329
             self.add_rotate_gz(item, 'X')
