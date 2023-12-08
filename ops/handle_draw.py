@@ -206,14 +206,14 @@ def register():
     # bpy.types.window_manager.camhp_snap_shot_image = BoolProperty(name='Snap Shot', default=False)
     bpy.types.WindowManager.camhp_snap_shot_image = BoolProperty(name='Snap Shot', default=False)
 
-    bpy.app.handlers.depsgraph_update_post.append(draw_handle)
-    bpy.app.handlers.load_pre.append(load_file_clear_handle)
+    # bpy.app.handlers.depsgraph_update_post.append(draw_handle)
+    # bpy.app.handlers.load_pre.append(load_file_clear_handle)
 
 
 def unregister():
-    clear_handle()
-    bpy.app.handlers.depsgraph_update_post.remove(draw_handle)
-    bpy.app.handlers.load_pre.remove(load_file_clear_handle)
+    # clear_handle()
+    # bpy.app.handlers.depsgraph_update_post.remove(draw_handle)
+    # bpy.app.handlers.load_pre.remove(load_file_clear_handle)
 
     # del bpy.types.Scene.camhp_pv
     del bpy.types.WindowManager.camhp_pv
