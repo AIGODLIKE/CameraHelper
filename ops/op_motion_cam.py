@@ -1008,7 +1008,7 @@ def register():
     bpy.utils.register_class(CAMHP_OT_bake_motion_cam)
 
     # bpy.types.VIEW3D_MT_object_context_menu.append(draw_context)
-    bpy.types.VIEW3D_MT_object_context_menu.append(draw_add_context)
+    # bpy.types.VIEW3D_MT_object_context_menu.append(draw_add_context)
 
 
 def unregister():
@@ -1034,4 +1034,4 @@ def unregister():
     bpy.utils.unregister_class(CAMHP_PT_add_motion_cams)
     bpy.utils.unregister_class(CAMHP_OT_bake_motion_cam)
     # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_context)
-    bpy.types.VIEW3D_MT_object_context_menu.remove(draw_add_context)
+    # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_add_context)
