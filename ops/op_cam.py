@@ -202,12 +202,12 @@ class CAMHP_OT_add_view_cam(Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        if event.ctrl:
-            bpy.ops.camhp.add_motion_cams('INVOKE_DEFAULT')
-            bpy.ops.ed.undo_push()
-            return {'FINISHED'}
-        else:
-            return self.execute(context)
+        # if event.ctrl:
+        #     bpy.ops.camhp.add_motion_cams('INVOKE_DEFAULT')
+        #     bpy.ops.ed.undo_push()
+        #     return {'FINISHED'}
+        # else:
+        return self.execute(context)
 
 
 class CAMHP_OT_lock_cam(Operator):

@@ -1002,7 +1002,7 @@ def register():
 
     # UI
     bpy.utils.register_class(CAMHP_UL_CameraList)
-    bpy.utils.register_class(CAMHP_PT_MotionCamPanel)
+    # bpy.utils.register_class(CAMHP_PT_MotionCamPanel)
 
     bpy.utils.register_class(CAMHP_PT_add_motion_cams)
     bpy.utils.register_class(CAMHP_OT_bake_motion_cam)
@@ -1029,7 +1029,7 @@ def unregister():
 
     # UI
     bpy.utils.unregister_class(CAMHP_UL_CameraList)
-    bpy.utils.unregister_class(CAMHP_PT_MotionCamPanel)
+    # bpy.utils.unregister_class(CAMHP_PT_MotionCamPanel)
 
     bpy.utils.unregister_class(CAMHP_PT_add_motion_cams)
     bpy.utils.unregister_class(CAMHP_OT_bake_motion_cam)
