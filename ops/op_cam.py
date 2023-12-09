@@ -8,7 +8,7 @@ from mathutils import Vector
 from math import tan, radians, sqrt
 
 from .utils import Cam
-from .draw_utils.shader import wrap_blf_size,ui_scale
+from .draw_utils.shader import wrap_blf_size, ui_scale
 
 
 class CAMHP_OT_move_view_between_cams(Operator):
@@ -377,27 +377,27 @@ class CAMHP_OT_popup_cam_settings(Operator):
         return {'INTERFACE'}
 
 
+from .utils import view3d_camera_border
+
+
 def draw_lens_callback(self, context):
     font_id = 0
 
     area = context.area
     r3d = area.spaces[0].region_3d
-    scale = r3d.view_camera_zoom
 
-    region = context.region
+    frame_px = view3d_camera_border(context.scene, area, r3d)
 
-    c_x = region.width / 2
-    c_y = region.height / 2
-    x = region.width - 160
-    y = 80
+    px = frame_px[1]  # bottom right
+    x = px[0]
+    y = px[1]
 
-    # 侧面面板偏移
-    for r in context.area.regions:
-        if r.type == 'UI':
-            x -= r.width
-            break
+    # get text dimensions
+    wrap_blf_size(font_id, 30 * ui_scale())
+    text_width, text_height = blf.dimensions(font_id, f"{int(context.scene.camera.data.lens)} mm")
+    x = x - text_width - 10 * ui_scale()
+    y = y + int(text_height) - 10 * ui_scale()
 
-    wrap_blf_size(font_id,30 * ui_scale())
     blf.position(font_id, x, y, 0)
     blf.color(font_id, 1, 1, 1, 0.5)
     blf.draw(font_id, f"{int(context.scene.camera.data.lens)} mm")
