@@ -21,7 +21,9 @@ indices = ((0, 1, 2), (2, 1, 3))
 from . import wrap_bgl_restore
 
 def ui_scale():
-    return bpy.context.preferences.system.dpi * bpy.context.preferences.system.pixel_size / 72
+    # return bpy.context.preferences.system.dpi * bpy.context.preferences.system.pixel_size / 72
+    # since blender 4.0, the bpy.context.preferences.system.pixel_size will jump from 1~2 while the ui scale tweak from 1.18~1.19
+    return bpy.context.preferences.system.dpi * 1 / 72
 
 
 def get_shader(type='3d'):
