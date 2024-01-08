@@ -37,6 +37,7 @@ def register():
     if bpy.app.version < (4, 0, 0):
         camhp_zh_CN.register()
     else:
+        camhp_zh_CN.register()
         camhp_zh_HANS.register()
 
 
@@ -44,4 +45,5 @@ def unregister():
     if bpy.app.version < (4, 0, 0):
         camhp_zh_CN.unregister()
     else:
+        camhp_zh_CN.register()
         camhp_zh_HANS.unregister()
