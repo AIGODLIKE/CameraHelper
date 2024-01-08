@@ -554,6 +554,7 @@ from .draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
 from .draw_utils.bl_ui_button import BL_UI_Button
 from .draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
 from .draw_utils.bl_ui_label import BL_UI_Label
+from ..public_path_utils import AssetDir, get_asset_dir
 
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 from bpy.app.translations import pgettext_iface as tip_
@@ -565,13 +566,39 @@ def get_obj_2d_loc(obj, context):
     return loc
 
 
+def load_asset(name: str, asset_type: str, filepath: str) -> bpy.types.NodeTree | bpy.types.Object:
+    """load asset into current scene from giving asset type"""
+    if asset_type == 'objects':
+        attr = 'objects'
+    elif asset_type == 'node_groups':
+        attr = 'node_groups'
+    else:
+        raise ValueError('asset_type not support')
+
+    # reuse existing data
+    data_lib = getattr(bpy.data, attr)
+    if name in data_lib and asset_type in {'node_groups'}:
+        return data_lib[name]
+
+    with bpy.data.libraries.load(filepath, link=False) as (data_from, data_to):
+        src = getattr(data_from, attr)
+        res = [x for x in src if x == name]
+        if not res:
+            raise ValueError(f'No {name} found in {filepath}')
+        setattr(data_to, attr, res)
+    # clear asset mark
+    obj = getattr(data_to, attr)[0]
+    obj.asset_clear()
+    return obj
+
+
 class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
     bl_idname = 'camhp.add_motion_cams'
     bl_label = 'Add Motion Camera'
     bl_options = {'UNDO_GROUPED', 'INTERNAL', 'BLOCKING', 'GRAB_CURSOR'}
 
     buttons = list()
-    cam = None
+    controller = None
 
     def __init__(self):
         super().__init__()
@@ -580,12 +607,6 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         # 面板提示
         self.panel = BL_UI_Drag_Panel(100, 300, 300, 290)
         self.panel.bg_color = 0.2, 0.2, 0.2, 0.9
-
-        # self.btn_close = BL_UI_Button(20, 100, 120, 30)
-        # self.btn_close.bg_color = (0.2, 0.8, 0.8, 0.8)
-        # self.btn_close.hover_bg_color = (0.2, 0.9, 0.9, 1.0)
-        # self.btn_close.text = "Finished"
-        # self.btn_close.set_mouse_down(self.finish, None)
 
         self.label_tip1 = BL_UI_Label(20, 120, 40, 50)
         self.label_tip1.text = tip_('Left Click->Camera Name to Add Source')
@@ -622,6 +643,8 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
     def cancel(self, context):
         if getattr(self, 'new_cam', None) is not None:
             bpy.data.objects.remove(self.new_cam)
+        if getattr(self, 'cam', None) is not None:
+            bpy.data.objects.remove(self.controller)
         return {'CANCELLED'}
 
     def on_invoke(self, context, event):
@@ -639,32 +662,59 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
 
         # 创建相机
         cam_data = bpy.data.cameras.new(name='Camera')
-        cam = bpy.data.objects.new('Camera', cam_data)
-        empty = bpy.data.objects.new('Empty', None)
-        self.new_cam = cam
+        cam_obj = bpy.data.objects.new('Camera', cam_data)
 
-        context.collection.objects.link(cam)
-        context.collection.objects.link(empty)
+        asset_motioncam = get_asset_dir(AssetDir.ASSET_BLEND.value)
+        controller_obj = load_asset(name='Controller', asset_type='objects', filepath=str(asset_motioncam))
+        asset_motion_src = load_asset(name='MotionCameraSource', asset_type='node_groups',
+                                      filepath=str(asset_motioncam))
+        asset_motion_gen = load_asset(name='MotionCamera', asset_type='node_groups',
+                                      filepath=str(asset_motioncam))
+
+        context.collection.objects.link(cam_obj)
+        context.collection.objects.link(controller_obj)
         # 设置
-        cam.data.show_name = True
-        cam.name = 'Motion Camera'
-        cam.parent = empty
+        cam_obj.data.show_name = True
+        cam_obj.name = 'Motion Camera'
+        # deselect all
+        bpy.ops.object.select_all(action='DESELECT')
+        context.view_layer.objects.active = controller_obj
+        controller_obj.select_set(True)
+        cam_obj.select_set(True)
+        # toggle edit mode
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.object.vertex_parent_set()
+        bpy.ops.object.mode_set(mode='OBJECT')
 
-        empty.name = 'Motion Control'
-        empty.motion_cam.affect.use_sub_camera = True
-        empty.motion_cam.affect.sub_camera = cam
-        # empty.empty_display_type = 'CUBE'
-
-        self.cam = empty
+        self.controller = controller_obj
+        self.new_cam = cam_obj
+        self.ng_motion_src = asset_motion_src
+        self.ng_motion_gen = asset_motion_gen
 
     def add_motion_cam(self, obj):
-        item = self.cam.motion_cam.list.add()
-        item.camera = obj
-        self.cam.motion_cam.offset_factor = 0.5
-        self.cam.update_tag()
+        bpy.context.view_layer.objects.active = self.controller
+        self.controller.select_set(True)
 
-        bpy.context.view_layer.objects.active = self.cam
-        self.cam.select_set(True)
+        if 'MotionCamera' not in self.controller.modifiers:
+            mod_gen = self.controller.modifiers.new(type='NODES', name='MotionCamera')
+            mod_gen.node_group = self.ng_motion_gen
+            mod_gen.show_group_selector = False
+
+        mod = self.controller.modifiers.new(type='NODES', name='MotionCameraSource')
+        mod.node_group = self.ng_motion_src
+        mod.show_group_selector = False
+
+        # set value
+        mod['Socket_2'] = obj
+        mod.show_viewport = False
+        mod.show_viewport = True
+        # move to bottom
+        for i, m in enumerate(self.controller.modifiers):
+            if m.name == 'MotionCamera':
+                self.controller.modifiers.move(i, len(self.controller.modifiers) - 1)
+                break
+
         bpy.context.area.tag_redraw()
 
     def modal(self, context, event):
