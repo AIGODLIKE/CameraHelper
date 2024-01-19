@@ -2,57 +2,61 @@ import bpy
 import gpu
 from bpy.app.handlers import persistent
 from bpy.types import SpaceView3D
-from .draw_utils.shader import CameraMotionPath, CameraThumb
+from .draw_utils.shader import CameraThumb
 from bpy.types import PropertyGroup
 from bpy.props import PointerProperty, BoolProperty, EnumProperty
 
+
 # 全局
-G_HANDLE_CURVE = None
-G_HANDLE_CAM_PV = None
-
-G_INST_CURVE = None
-G_INST_CAM_PV = None
 
 
-def clear_handle():
-    global G_HANDLE_CURVE, G_HANDLE_CAM_PV
-    global G_INST_CURVE, G_INST_CAM_PV
+class CameraThumbHandle:
+    """Helper class for manage the handle/drawing instance"""
+    _inst: CameraThumb = None
+    _handle: int = None
 
-    if G_INST_CURVE:
-        try:
-            SpaceView3D.draw_handler_remove(G_HANDLE_CURVE, 'WINDOW')
-        except Exception:
-            print("Handle C_HANDLE_CURVE already removed")
+    # get the instance of the class
+    @property
+    def inst(self):
+        return self.__class__._inst
 
-        G_HANDLE_CURVE = None
-        G_INST_CURVE = None
+    # set the instance of the class
+    @inst.setter
+    def inst(self, value: CameraThumb):
+        self.__class__._inst = value
 
-    if G_INST_CAM_PV and not bpy.context.window_manager.camhp_pv.pin:
-        try:
-            SpaceView3D.draw_handler_remove(G_HANDLE_CAM_PV, 'WINDOW')
-        except Exception:
-            print("Handle C_HANDLE_CAM_PV already removed")
+    @property
+    def handle(self):
+        return self.__class__._handle
 
-        G_HANDLE_CAM_PV = None
-        G_INST_CAM_PV = None
+    @handle.setter
+    def handle(self, value: int):
+        self.__class__._handle = value
 
+    @staticmethod
+    def clear_handle():
+        if CameraThumbHandle.inst and not bpy.context.window_manager.camhp_pv.pin:
+            try:
+                SpaceView3D.draw_handler_remove(CameraThumbHandle.handle, 'WINDOW')
+            except Exception:
+                print("Handle C_HANDLE_CAM_PV already removed")
 
-def add_handle(context, depsgraph):
-    global G_HANDLE_CURVE, G_HANDLE_CAM_PV
-    global G_INST_CURVE, G_INST_CAM_PV
+            CameraThumbHandle.handle = None
+            CameraThumbHandle.inst = None
 
-    if G_HANDLE_CURVE is None:
-        G_INST_CURVE = CameraMotionPath(context, depsgraph)
-        G_HANDLE_CURVE = SpaceView3D.draw_handler_add(G_INST_CURVE, (context,), 'WINDOW', 'POST_VIEW')
-
-    if G_HANDLE_CAM_PV is None:
-        G_INST_CAM_PV = CameraThumb(context, depsgraph)
-        G_HANDLE_CAM_PV = SpaceView3D.draw_handler_add(G_INST_CAM_PV, (context,), 'WINDOW', 'POST_PIXEL')
+    @staticmethod
+    def add_handle(context, depsgraph):
+        if CameraThumbHandle.handle is None:
+            CameraThumbHandle.inst = CameraThumb(context, depsgraph)
+            CameraThumbHandle.handle = SpaceView3D.draw_handler_add(CameraThumbHandle.inst, (context,), 'WINDOW',
+                                                                    'POST_PIXEL')
 
 
 def clear_wrap(self, context):
     if not self.enable:
-        clear_handle()
+        CameraThumbHandle.clear_handle()
+    else:
+        CameraThumbHandle.add_handle(context, context.evaluated_depsgraph_get())
 
 
 class CameraPV(PropertyGroup):
@@ -129,15 +133,15 @@ def draw_handle(scene, depsgraph):
     context = bpy.context
 
     if is_select_obj(context):
-        add_handle(context, depsgraph)
+        CameraThumbHandle.add_handle(context, depsgraph)
     else:
-        clear_handle()
+        CameraThumbHandle.clear_handle()
 
 
 @persistent
 def load_file_clear_handle(noob):
     print('Camera Helper Clear Handle')
-    clear_handle()
+    CameraThumbHandle.clear_handle()
     bpy.context.window_manager.camhp_pv.enable = False
 
 
@@ -148,18 +152,18 @@ class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return G_INST_CAM_PV
+        return CameraThumbHandle.inst
 
     def invoke(self, context, event):
         context.window_manager.camhp_snap_shot_image = True
         return self.execute(context)
 
     def execute(self, context):
-        self.width = G_INST_CAM_PV.width
-        self.height = G_INST_CAM_PV.height
+        self.width = CameraThumbHandle.inst.width
+        self.height = CameraThumbHandle.inst.height
 
-        cam = G_INST_CAM_PV.cam
-        buffer = G_INST_CAM_PV.buffer
+        cam = CameraThumbHandle.inst.cam
+        buffer = CameraThumbHandle.inst.buffer
 
         if f'_SnapShot_{cam.name}' in bpy.data.images:
             img = bpy.data.images[f'_SnapShot_{cam.name}']
@@ -207,13 +211,12 @@ def register():
     bpy.types.WindowManager.camhp_snap_shot_image = BoolProperty(name='Snap Shot', default=False)
 
     # bpy.app.handlers.depsgraph_update_post.append(draw_handle)
-    # bpy.app.handlers.load_pre.append(load_file_clear_handle)
+    bpy.app.handlers.load_pre.append(load_file_clear_handle)
 
 
 def unregister():
-    # clear_handle()
     # bpy.app.handlers.depsgraph_update_post.remove(draw_handle)
-    # bpy.app.handlers.load_pre.remove(load_file_clear_handle)
+    bpy.app.handlers.load_pre.remove(load_file_clear_handle)
 
     # del bpy.types.Scene.camhp_pv
     del bpy.types.WindowManager.camhp_pv
