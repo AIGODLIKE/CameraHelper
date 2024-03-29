@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Camera Helper",
     "author": "AIGODLIKE社区,Atticus",
-    "blender": (4, 0, 0),
-    "version": (1, 3, 2),
+    "blender": (4, 1, 0),
+    "version": (1, 3, 3),
     "category": "辣椒出品",
     "support": "COMMUNITY",
     "doc_url": "",
