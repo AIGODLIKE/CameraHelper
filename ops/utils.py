@@ -1,7 +1,8 @@
 import bpy
 import bmesh
 from pathlib import Path
-
+from typing import Callable, Union
+from mathutils import Vector
 from ..prefs.get_pref import get_pref
 
 # 用于处理曲线的几何节点组 -----------------------------------------------------
@@ -12,7 +13,7 @@ C_GET_CURVE_EVAL_POS = 'get_curve_eval_pos'
 # -----------------------------------------------------------------------------
 
 
-def meas_time(func):
+def meas_time(func: Callable) -> Callable:
     """计时装饰器
 
     :param func:
@@ -29,7 +30,7 @@ def meas_time(func):
     return wrapper
 
 
-def get_geo_node_file(filename='process.blend') -> Path:
+def get_geo_node_file(filename: str = 'process.blend') -> Path:
     """几何节点组的文件路径
 
     :param filename:
@@ -38,7 +39,9 @@ def get_geo_node_file(filename='process.blend') -> Path:
     return Path(__file__).parent.joinpath('nodes', filename)
 
 
-def get_mesh_obj_coords(context, obj, deps=None) -> list:
+def get_mesh_obj_coords(context: bpy.types.Context, obj: bpy.types.Object,
+                        deps: Union[bpy.types.Depsgraph, None] = None) -> list[
+    Vector]:
     """获取mesh对象的位置
 
     :param obj:bpy.types.Object
@@ -50,7 +53,8 @@ def get_mesh_obj_coords(context, obj, deps=None) -> list:
     return [v.co for v in obj_eval.data.vertices]
 
 
-def get_mesh_obj_attrs(context, obj, deps=None) -> dict:
+def get_mesh_obj_attrs(context: bpy.types.Context, obj: bpy.types.Object,
+                       deps: Union[bpy.types.Depsgraph, None] = None) -> dict[str, list[Union[float, Vector]]]:
     """获取mesh对象的属性值
 
     :param obj:bpy.types.Object
@@ -75,8 +79,7 @@ def get_mesh_obj_attrs(context, obj, deps=None) -> dict:
     return attr_dict
 
 
-
-def view3d_find():
+def view3d_find() -> Union[tuple[bpy.types.Region, bpy.types.RegionView3D], tuple[None, None]]:
     # returns first 3d view, normally we get from context
     for area in bpy.context.window.screen.areas:
         if area.type == 'VIEW_3D':
@@ -87,7 +90,9 @@ def view3d_find():
                     return region, rv3d
     return None, None
 
-def view3d_camera_border(scene,region,rv3d):
+
+def view3d_camera_border(scene: bpy.types.Scene, region: bpy.types.Region, rv3d: bpy.types.RegionView3D) -> list[
+    Vector]:
     obj = scene.camera
     cam = obj.data
 
@@ -100,7 +105,6 @@ def view3d_camera_border(scene,region,rv3d):
     from bpy_extras.view3d_utils import location_3d_to_region_2d
     frame_px = [location_3d_to_region_2d(region, rv3d, v) for v in frame]
     return frame_px
-
 
 
 class Cam():
@@ -122,20 +126,20 @@ class Cam():
         min_view_radian = 0.007  # 0.367d
         self.cam.data.angle = max(min(self.cam.data.angle + value, max_view_radian), min_view_radian)
 
-    def get_angle(self):
+    def get_angle(self) -> float:
         return self.cam.data.angle
 
     def offsetLocation(self, localCorrectionVector):
         self.cam.location = self.cam.location + (localCorrectionVector @ self.cam.matrix_world.inverted())
 
-    def get_local_point(self, point):
+    def get_local_point(self, point) -> Vector:
         return self.cam.matrix_world.inverted() @ point
 
 
 # 以下所有方法都会出发depsgraph更新，无法用于实时动画set/get
 ###############################################################################
 
-def get_geo_node_group(filename='process.blend', node_group=C_GET_CURVE_ATTR):
+def get_geo_node_group(filename: str = 'process.blend', node_group: str = C_GET_CURVE_ATTR) -> bpy.types.NodeTree:
     """获取几何节点组
 
     :param filename:
@@ -153,7 +157,8 @@ def get_geo_node_group(filename='process.blend', node_group=C_GET_CURVE_ATTR):
 
     return ng
 
-def create_tool_collection(name = 'CameraHelper'):
+
+def create_tool_collection(name: str = 'CameraHelper') -> bpy.types.Collection:
     if name not in bpy.data.collections:
         coll = bpy.data.collections.new(name)
         bpy.context.scene.collection.children.link(coll)
@@ -163,7 +168,9 @@ def create_tool_collection(name = 'CameraHelper'):
 
     return coll
 
-def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, close_spline=False, type='SMOOTH'):
+
+def gen_bezier_curve_from_points(coords: list[Vector], curve_name: str, resolution_u: int = 12,
+                                 close_spline: bool = False, type: str = 'SMOOTH') -> bpy.types.Object:
     """根据点集生成贝塞尔曲线
 
     :param coords:list of tuple(x, y, z)
@@ -227,7 +234,8 @@ def gen_bezier_curve_from_points(coords: list, curve_name, resolution_u=12, clos
     return curve_obj
 
 
-def set_obj_geo_mod(obj, name='Geo Node', node_group=None):
+def set_obj_geo_mod(obj: bpy.types.Object, name: str = 'Geo Node',
+                    node_group: Union[bpy.types.NodeTree, None] = None) -> bpy.types.Modifier:
     """添加几何模型修饰器
 
     :param obj:bpy.types.Object
@@ -240,7 +248,8 @@ def set_obj_geo_mod(obj, name='Geo Node', node_group=None):
     return mod
 
 
-def gen_curve_sample_obj(curve_obj, postfix='_sample', node_group=C_GET_CURVE_ATTR):
+def gen_curve_sample_obj(curve_obj: bpy.types.Object, postfix: str = '_sample',
+                         node_group: str = C_GET_CURVE_ATTR) -> bpy.types.Object:
     """根据曲线物体生属性采样用物体
 
     :param curve_obj:
