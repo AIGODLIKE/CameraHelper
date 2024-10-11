@@ -1,0 +1,10 @@
+name = "Camera Helper"
+id = "CameraHepler"
+maintainer = "Atticus, AIGODLIKE Community"
+version = "1, 4, 0"
+tagline = "Camera Helper with amazing tools"
+blender_version_min = "4.2.0"
+type = "add-on"
+schema_version = "1.0.0"
+tags = ["Render", "User Interface", "Camera"]
+license = ["SPDX:GPL-3.0-or-later"]

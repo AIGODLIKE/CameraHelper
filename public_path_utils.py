@@ -5,6 +5,7 @@ from enum import Enum
 class AssetDir(Enum):
     DIRECTORY = 'asset'
     ASSET_BLEND = 'CamerHelper.blend'
+    ASSET_BLEND_WITH_GIZMO = 'CamerHelperWithGizmo.blend'
 
 
 def get_asset_dir(subpath=None):
