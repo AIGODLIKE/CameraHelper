@@ -664,7 +664,10 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         cam_data = bpy.data.cameras.new(name='Camera')
         cam_obj = bpy.data.objects.new('Camera', cam_data)
 
-        asset_motioncam = get_asset_dir(AssetDir.ASSET_BLEND.value)
+        if bpy.app.version >= (4, 3, 0):
+            asset_motioncam = get_asset_dir(AssetDir.ASSET_BLEND_WITH_GIZMO.value)
+        else:
+            asset_motioncam = get_asset_dir(AssetDir.ASSET_BLEND.value)
         controller_obj = load_asset(name='Controller', asset_type='objects', filepath=str(asset_motioncam))
         asset_motion_src = load_asset(name='MotionCameraSource', asset_type='node_groups',
                                       filepath=str(asset_motioncam))
