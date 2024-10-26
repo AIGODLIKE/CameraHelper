@@ -716,8 +716,8 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
         for i, m in enumerate(self.controller.modifiers):
             if m.name == 'MotionCamera':
                 self.controller.modifiers.move(i, len(self.controller.modifiers) - 1)
+                self.controller.modifiers.active = m
                 break
-
         bpy.context.area.tag_redraw()
 
     def modal(self, context, event):
