@@ -1,11 +1,10 @@
 import bpy
-import mathutils
-from bpy.types import PropertyGroup, Operator, Panel, UIList
 from bpy.props import CollectionProperty, PointerProperty, FloatProperty, IntProperty, StringProperty, BoolProperty, \
     EnumProperty
+from bpy.types import PropertyGroup, Operator, Panel, UIList
 
-from .utils import meas_time, get_mesh_obj_attrs
 from .utils import gen_bezier_curve_from_points, gen_sample_attr_obj, gen_sample_mesh_obj
+from .utils import meas_time, get_mesh_obj_attrs
 
 C_ATTR_FAC = 'factor'
 C_ATTR_LENGTH = 'length'
@@ -600,8 +599,8 @@ class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
     buttons = list()
     controller = None
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.buttons.clear()
 
         # 面板提示

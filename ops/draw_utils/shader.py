@@ -120,7 +120,7 @@ def get_start_point(thumb_width, thumb_height, index=0):
     return (w, h)
 
 
-class CameraThumb():
+class CameraThumb:
     border_width = 5
 
     def __init__(self, context, deps):
