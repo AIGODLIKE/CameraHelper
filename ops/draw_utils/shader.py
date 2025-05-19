@@ -1,15 +1,10 @@
 # import bgl
 import blf
-import gpu
 import bpy
-
+import gpu
+from gpu_extras.batch import batch_for_shader
 from gpu_extras.presets import draw_texture_2d
-from gpu.shader import from_builtin as get_builtin_shader
-from gpu_extras.batch import batch_for_shader
 
-from mathutils import Vector
-from gpu_extras.batch import batch_for_shader
-from ..utils import get_mesh_obj_coords
 from ...prefs.get_pref import get_pref
 
 WIDTH = 512
@@ -17,8 +12,6 @@ HEIGHT = 256
 PADDING = 20
 
 indices = ((0, 1, 2), (2, 1, 3))
-
-from . import wrap_bgl_restore
 
 
 def ui_scale():
@@ -56,10 +49,19 @@ def wrap_blf_size(font_id: int, size):
         blf.size(font_id, size, 72)
 
 
+def get_style_font_size() -> int:
+    style = bpy.context.preferences.ui_styles[0]
+    if widget_label := getattr(style, "widget_label", None):
+        return int(widget_label.points * ui_scale())
+    elif widget := getattr(style, "widget", None):
+        return int(widget.points)
+    return 10
+
+
 def get_start_point(thumb_width, thumb_height, index=0):
     # const
     padding = int(10 * ui_scale())
-    font_size = int(bpy.context.preferences.ui_styles[0].widget_label.points * ui_scale())
+    font_size = int(get_style_font_size())
     text_height = int(font_size * 3)  # 2 line text and padding
     stats_height = int(font_size * 6 + padding * 5)  # 5 line text and padding
     # get area
