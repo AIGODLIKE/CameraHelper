@@ -1,10 +1,10 @@
 import bpy
-import gpu
 from bpy.app.handlers import persistent
-from bpy.types import SpaceView3D
-from .draw_utils.shader import CameraThumb
+from bpy.props import PointerProperty, BoolProperty
 from bpy.types import PropertyGroup
-from bpy.props import PointerProperty, BoolProperty, EnumProperty
+from bpy.types import SpaceView3D
+
+from .draw_utils.shader import CameraThumb
 
 
 # 全局
@@ -53,9 +53,8 @@ class CameraThumbHandle:
 
 
 def clear_wrap(self, context):
-    if not self.enable:
-        CameraThumbHandle.clear_handle()
-    else:
+    CameraThumbHandle.clear_handle()
+    if self.enable:
         CameraThumbHandle.add_handle(context, context.evaluated_depsgraph_get())
 
 
@@ -112,7 +111,7 @@ class CAMHP_OT_campv_popup(bpy.types.Operator):
             elif event.shift and event.ctrl:
                 bpy.ops.camhp.pv_snap_shot()
             else:
-                context.window_manager.camhp_pv.enable = False if context.window_manager.camhp_pv.enable else True
+                context.window_manager.camhp_pv.enable = not context.window_manager.camhp_pv.enable
 
         context.area.tag_redraw()
 
