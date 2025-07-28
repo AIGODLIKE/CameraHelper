@@ -7,3 +7,4 @@
 VERSION 1
 
 2281e209-0e27-4585-8f27-9d90f67e3fae:相机助手:相机助手
+11451419-1981-6666-6666-000000000000:Material Helper:Material Helper
