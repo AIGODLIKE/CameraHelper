@@ -1,7 +1,4 @@
 import bpy
-import json
-import os
-import importlib
 
 
 class TranslationHelper:

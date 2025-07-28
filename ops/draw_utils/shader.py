@@ -5,8 +5,6 @@ import gpu
 from gpu_extras.batch import batch_for_shader
 from gpu_extras.presets import draw_texture_2d
 
-from ...prefs.get_pref import get_pref
-
 WIDTH = 512
 HEIGHT = 256
 PADDING = 20

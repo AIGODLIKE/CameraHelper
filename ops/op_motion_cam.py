@@ -553,7 +553,7 @@ from .draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
 from .draw_utils.bl_ui_button import BL_UI_Button
 from .draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
 from .draw_utils.bl_ui_label import BL_UI_Label
-from ..public_path_utils import AssetDir, get_asset_dir
+from ..utils import AssetDir, get_asset_dir
 
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 from bpy.app.translations import pgettext_iface as tip_

@@ -1,12 +1,11 @@
 import bpy
 import rna_keymap_ui
-from .. import __ADDON_NAME__
+from .. import __package__ as base_package
 from bpy.props import EnumProperty, StringProperty, FloatProperty, IntProperty, BoolProperty, PointerProperty, \
     FloatVectorProperty
-from bpy.types import PropertyGroup
 
 
-class GizmoMotionCamera(PropertyGroup):
+class GizmoMotionCamera(bpy.types.PropertyGroup):
     loop: BoolProperty(name="Loop", default=False)
 
     color: FloatVectorProperty(name='Color', subtype='COLOR_GAMMA', size=4,
@@ -16,7 +15,7 @@ class GizmoMotionCamera(PropertyGroup):
     scale_basis: FloatProperty(name='Scale', default=1, min=0.2)
 
 
-class GizmoMotionSource(PropertyGroup):
+class GizmoMotionSource(bpy.types.PropertyGroup):
     color: FloatVectorProperty(name='Color', subtype='COLOR_GAMMA', size=4,
                                default=(0.0, 0.6, 0.8, 0.6))
     color_highlight: FloatVectorProperty(name='Active Highlight', subtype='COLOR_GAMMA', size=4,
@@ -24,12 +23,12 @@ class GizmoMotionSource(PropertyGroup):
     scale_basis: FloatProperty(name='Scale', default=0.75, min=0.1)
 
 
-class DrawMotionCurve(PropertyGroup):
+class DrawMotionCurve(bpy.types.PropertyGroup):
     color: FloatVectorProperty(name='Color', subtype='COLOR_GAMMA', size=4, default=(0.8, 0, 0, 0.5))
     width: IntProperty(name='Width', default=3, min=1, soft_max=5)
 
 
-class CameraThumb(PropertyGroup):
+class CameraThumb(bpy.types.PropertyGroup):
     max_width: IntProperty(name='Max Width', default=400, min=50, soft_max=800)
     max_height: IntProperty(name='Max Height', default=300, min=50, soft_max=600)
 
@@ -42,12 +41,8 @@ class CameraThumb(PropertyGroup):
 
 
 class CAMHP_Preference(bpy.types.AddonPreferences):
-    bl_idname = __ADDON_NAME__
+    bl_idname = base_package
 
-    ui: EnumProperty(name='UI', items=[
-        ('SETTINGS', 'Settings', '', 'PREFERENCES', 0),
-        ('KEYMAP', 'Keymap', '', 'KEYINGSET', 1),
-    ], default='SETTINGS')
 
     gz_motion_camera: PointerProperty(type=GizmoMotionCamera)
     gz_motion_source: PointerProperty(type=GizmoMotionSource)
@@ -58,14 +53,7 @@ class CAMHP_Preference(bpy.types.AddonPreferences):
 
     def draw(self, context):
         layout = self.layout
-
-        row = layout.row(align=True)
-        row.prop(self, 'ui', expand=True)
-
-        if self.ui == 'KEYMAP':
-            self.draw_keymap(context, layout)
-        elif self.ui == 'SETTINGS':
-            self.draw_settings(context, layout)
+        self.draw_settings(context, layout)
 
     def draw_settings(self, context, layout):
         col = layout.column()
@@ -95,39 +83,6 @@ class CAMHP_Preference(bpy.types.AddonPreferences):
         box.prop(self.camera_thumb, 'max_height', slider=True)
         row = box.row(align=True)
         row.prop(self.camera_thumb, 'position', expand=True)
-
-    def draw_keymap(self, context, layout):
-        col = layout.box().column()
-        col.label(text="Keymap", icon="KEYINGSET")
-        km = None
-        wm = context.window_manager
-        kc = wm.keyconfigs.user
-
-        old_km_name = ""
-        get_kmi_l = []
-
-        from .data_keymap import addon_keymaps
-
-        for km_add, kmi_add in addon_keymaps:
-            for km_con in kc.keymaps:
-                if km_add.name == km_con.name:
-                    km = km_con
-                    break
-
-            for kmi_con in km.keymap_items:
-                if kmi_add.idname == kmi_con.idname and kmi_add.name == kmi_con.name:
-                    get_kmi_l.append((km, kmi_con))
-
-        get_kmi_l = sorted(set(get_kmi_l), key=get_kmi_l.index)
-
-        for km, kmi in get_kmi_l:
-            if not km.name == old_km_name:
-                col.label(text=str(km.name), icon="DOT")
-
-            col.context_pointer_set("keymap", km)
-            rna_keymap_ui.draw_kmi([], kc, km, kmi, col, 0)
-
-            old_km_name = km.name
 
 
 def register():

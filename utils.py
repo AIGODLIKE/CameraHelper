@@ -1,5 +1,7 @@
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
+
+import bpy
 
 
 class AssetDir(Enum):
@@ -17,3 +19,8 @@ def get_asset_dir(subpath=None):
         return preset_dir.joinpath(subpath)
 
     return preset_dir
+
+
+def get_pref():
+    """get preferences of this plugin"""
+    return bpy.context.preferences.addons[__package__].preferences

@@ -1,6 +1,5 @@
 import threading
-from . import data_keymap, preferences
-from ..public_path_utils import get_asset_dir, AssetDir
+from ..utils import get_asset_dir
 
 
 def ensure_asset_library_exists(lock, passedSleepTime):

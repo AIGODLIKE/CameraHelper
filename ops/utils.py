@@ -3,7 +3,6 @@ import bmesh
 from pathlib import Path
 from typing import Callable, Union
 from mathutils import Vector
-from ..prefs.get_pref import get_pref
 
 # 用于处理曲线的几何节点组 -----------------------------------------------------
 C_GET_CURVE_ATTR = 'get_curve_attr'

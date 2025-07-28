@@ -20,12 +20,11 @@ class GizmoGroupBase:
     def poll(cls, context):
         if context.area.type == 'VIEW_3D':
             vp = context.area.spaces[0].region_3d.view_perspective
-
             if cls.VIEW == 'CAMERA' and context.scene.camera:
                 return vp == cls.VIEW
-
             elif cls.VIEW == 'PERSP':
                 return vp == cls.VIEW
+        return False
 
     def draw_prepare(self, context):
         # ui scale
@@ -248,7 +247,7 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
 
     def setup(self, context):
         self._move_gz = dict()
-        self._rotate_gz =dict()
+        self._rotate_gz = dict()
         self.gz_motion_cam = None
 
         self.cam_list = [item.camera for item in context.object.motion_cam.list]
@@ -322,8 +321,8 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
             gz.matrix_basis.translation = cam.matrix_world.translation
 
     def add_rotate_gz(self, item, axis='Z'):
-        # rotate gz
-        # gz = self.gizmos.new("GIZMO_GT_dial_3d")
+        # rotate gizmo
+        # gizmo = self.gizmos.new("GIZMO_GT_dial_3d")
         gz = self.gizmos.new("CAMHP_GT_custom_rotate_1d")
 
         prop = gz.target_set_operator(CAMHP_OT_rotate_object.bl_idname)
@@ -359,7 +358,7 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
         self._gz_axis[gz] = axis
 
     def add_move_gz(self, index, item):
-        # move gz
+        # move gizmo
         gz = self.gizmos.new("CAMHP_GT_custom_move_3d")
         gz._index = index
         gz._camera = item.camera
