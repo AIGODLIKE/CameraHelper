@@ -1,13 +1,16 @@
-from . import op_cam, op_motion_cam, handle_draw
+import bpy
+from .add_camera import CAMHP_OT_add_view_cam
+from .lock_camera import CAMHP_OT_lock_cam
+
+register_class, unregister_class = bpy.utils.register_classes_factory((
+    CAMHP_OT_add_view_cam,
+    CAMHP_OT_lock_cam,
+))
 
 
 def register():
-    op_cam.register()
-    op_motion_cam.register()
-    handle_draw.register()
+    ...
 
 
 def unregister():
-    handle_draw.unregister()
-    op_cam.unregister()
-    op_motion_cam.unregister()
+    ...

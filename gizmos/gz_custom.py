@@ -4,8 +4,8 @@ import bpy
 from bpy_extras import view3d_utils
 from mathutils import Vector
 
-from ..ops.draw_utils import wrap_bgl_restore
-from ..ops.op_motion_cam import get_obj_2d_loc
+from ops.old.draw_utils import wrap_bgl_restore
+from ops.motion.op_motion_cam import get_obj_2d_loc
 
 @dataclass
 class GizmoInfo_2D:
@@ -172,7 +172,7 @@ class CAMHP_GT_custom_move_1d(GizmoBase3D, Gizmo):
         return super().invoke(context, event)
 
 
-# 创建3d gizmo
+# 创建3d gizmos
 class CAMHP_GT_custom_move_3d(GizmoBase3D, Gizmo):
     bl_idname = "CAMHP_GT_custom_move_3d"
     # The id must be "offset"
