@@ -1,9 +1,10 @@
 import bpy
+from ..utils import get_operator_bl_idname
 
 
-class CAMHP_OT_add_view_cam(bpy.types.Operator):
+class AddCamera(bpy.types.Operator):
     """Add View Camera\nCtrl Left Click: Add Motion Camera"""
-    bl_idname = 'camhp.add_view_cam'
+    bl_idname = get_operator_bl_idname("add_camera")
     bl_label = 'Add View Camera'
     bl_options = {'REGISTER', 'UNDO'}
 

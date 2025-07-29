@@ -1,15 +1,15 @@
 import bpy
 
-from .add_camera import CAMHP_OT_add_view_cam
+from .add_camera import AddCamera
 from .lock_camera import CAMHP_OT_lock_cam
-from .preview_camera import CAMHP_OT_campv_popup
-from .adjust_cam_lens import CAMHP_OT_adjust_cam_lens
+from .preview_camera import PreviewCamera
+from .adjust_cam_lens import AdjustCameraLens
 
 register_class, unregister_class = bpy.utils.register_classes_factory((
-    CAMHP_OT_add_view_cam,
+    AddCamera,
     CAMHP_OT_lock_cam,
-    CAMHP_OT_campv_popup,
-    CAMHP_OT_adjust_cam_lens,
+    PreviewCamera,
+    AdjustCameraLens,
 ))
 
 

@@ -1,9 +1,10 @@
 from math import tan, radians
 
-import bpy
-
 import blf
+import bpy
 from mathutils import Vector
+
+from ..utils import get_operator_bl_idname
 
 
 def draw_lens_callback(self, context):
@@ -29,9 +30,9 @@ def draw_lens_callback(self, context):
     blf.draw(font_id, f"{int(context.scene.camera.data.lens)} mm")
 
 
-class CAMHP_OT_adjust_cam_lens(bpy.types.Operator):
+class AdjustCameraLens(bpy.types.Operator):
     """Use Cursor to Adjust Camera Lens"""
-    bl_idname = "camhp.adjust_cam_lens"
+    bl_idname = get_operator_bl_idname("adjust_camera_lens")
     bl_label = "Adjust Camera Lens"
     bl_options = {'GRAB_CURSOR', 'BLOCKING', 'UNDO'}
 

@@ -20,9 +20,10 @@ class Gizmos:
 
     def create_adjust_camera(self, context):
         # 调整焦距控件
+        from ..ops.adjust_cam_lens import AdjustCameraLens
         gz = self.create_gizmo("GIZMO_GT_button_2d")
         gz.icon = 'VIEW_PERSPECTIVE'
-        props = gz.target_set_operator("camhp.adjust_cam_lens")
+        gz.target_set_operator(AdjustCameraLens.bl_idname)
         self.gz_move = gz
 
     def create_camera_settings(self, context):
@@ -34,16 +35,18 @@ class Gizmos:
         self.gz_setttings = gz
 
     def create_add_camera(self, context):
+        from ..ops.add_camera import AddCamera
         gz = self.create_gizmo("GIZMO_GT_button_2d")
         gz.icon = 'ADD'
-        props = gz.target_set_operator("camhp.add_view_cam")
+        gz.target_set_operator(AddCamera.bl_idname)
         self.gz_add_cam = gz
 
     def create_camera_preview(self, context):
+        from ..ops.preview_camera import PreviewCamera
         gz = self.create_gizmo("GIZMO_GT_button_2d")
         gz.use_event_handle_all = True
         gz.icon = 'IMAGE_PLANE'
-        props = gz.target_set_operator("camhp.campv_popup")
+        gz.target_set_operator(PreviewCamera.bl_idname)
         self.gz_cam_pv = gz
 
 

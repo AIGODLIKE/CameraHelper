@@ -1,5 +1,7 @@
 import bpy
 
+from ..utils import get_operator_bl_idname
+
 
 # class CameraThumbHandle:
 #     """Helper class for manage the handle/drawing instance"""
@@ -59,10 +61,10 @@ import bpy
 #     show_overlay: BoolProperty(name="Show Overlay", default=False,
 #                                description='Show Overlay', options={'HIDDEN'})
 
-class CAMHP_OT_campv_popup(bpy.types.Operator):
+class PreviewCamera(bpy.types.Operator):
     """Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera\nCtrl Shift Click: Send to Viewer"""
-    bl_idname = "camhp.campv_popup"
-    bl_label = "Preview"
+    bl_idname = get_operator_bl_idname("preview_camera")
+    bl_label = "Preview Camera"
 
     @classmethod
     def poll(cls, context):

@@ -64,3 +64,15 @@ def offset_2d_gizmo(context, gizmo, offset_step):
     gizmo.matrix_basis[0][3] = start_x
     gizmo.matrix_basis[1][3] = start_y - step * offset_step
     gizmo.scale_basis = icon_scale
+
+
+def get_operator_bl_idname(suffix: str) -> str:
+    return f"camera_helper.{suffix}"
+
+
+def get_menu_bl_idname(suffix: str) -> str:
+    return f"CAMERA_HELPER_MT_{suffix}"
+
+
+def get_panel_bl_idname(suffix: str) -> str:
+    return f"CAMERA_HELPER_PT_{suffix}"
