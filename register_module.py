@@ -1,6 +1,7 @@
-from . import ops, preferences, res, gizmos
+from . import ops, preferences, res, gizmos,ui
 
 module_list = [
+    ui,
     res,
     ops,
     gizmos,

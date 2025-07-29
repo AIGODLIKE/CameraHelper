@@ -1,16 +1,4 @@
 import bpy
-import blf
-
-from bpy.types import Operator
-from bpy.props import EnumProperty, StringProperty
-
-from mathutils import Vector
-from math import tan, radians, sqrt
-
-from .utils import Cam
-from .draw_utils.shader import wrap_blf_size, ui_scale
-
-
 
 
 class pop_cam_panel(bpy.types.Panel):
@@ -149,35 +137,28 @@ class CAMHP_PT_pop_cam_lens(pop_cam_panel):
         sub.prop(cam, "clip_end", text="End")
 
 
-class CAMHP_OT_popup_cam_settings(Operator):
+class CAMHP_MT_popup_cam_settings(bpy.types.Menu):
     """Properties"""
-    bl_idname = 'camhp.popup_cam_settings'
     bl_label = 'Camera Settings'
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = "WINDOW"
 
-    def invoke(self, context, event):
-        def draw(self_, context_):
-            layout = self_.layout
-            layout.popover(panel='CAMHP_PT_pop_cam_lens')
-            layout.popover(panel='CAMHP_PT_pop_cam_dof')
-            layout.popover(panel='CAMHP_PT_pop_cam_comp_panel', text='Guide')
-
-        context.window_manager.popup_menu(draw, title=context.scene.camera.name)
-        return {'INTERFACE'}
-
-
+    def draw(self, context_):
+        layout = self.layout
+        layout.popover(panel='CAMHP_PT_pop_cam_lens')
+        layout.popover(panel='CAMHP_PT_pop_cam_dof')
+        layout.popover(panel='CAMHP_PT_pop_cam_comp_panel', text='Guide')
 
 
 def register():
-
     bpy.utils.register_class(CAMHP_PT_pop_cam_comp_panel)
     bpy.utils.register_class(CAMHP_PT_pop_cam_dof)
     bpy.utils.register_class(CAMHP_PT_pop_cam_lens)
-    bpy.utils.register_class(CAMHP_OT_popup_cam_settings)
+    bpy.utils.register_class(CAMHP_MT_popup_cam_settings)
 
 
 def unregister():
-
     bpy.utils.unregister_class(CAMHP_PT_pop_cam_comp_panel)
     bpy.utils.unregister_class(CAMHP_PT_pop_cam_dof)
     bpy.utils.unregister_class(CAMHP_PT_pop_cam_lens)
-    bpy.utils.unregister_class(CAMHP_OT_popup_cam_settings)
+    bpy.utils.unregister_class(CAMHP_MT_popup_cam_settings)

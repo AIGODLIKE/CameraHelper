@@ -16,6 +16,7 @@ class Gizmos:
         gz.alpha_highlight = 0.8
 
         gz.scale_basis = (80 * 0.35) / 2  # Same as buttons defined in C
+        return gz
 
     def create_adjust_camera(self, context):
         # 调整焦距控件
@@ -28,7 +29,8 @@ class Gizmos:
         # 相机设置
         gz = self.create_gizmo("GIZMO_GT_button_2d")
         gz.icon = 'PROPERTIES'
-        props = gz.target_set_operator("camhp.popup_cam_settings")
+        props = gz.target_set_operator("wm.call_menu")
+        props.name = "CAMHP_MT_popup_cam_settings"
         self.gz_setttings = gz
 
     def create_add_camera(self, context):
@@ -56,9 +58,9 @@ class Button2DGizmos(bpy.types.GizmoGroup, Gizmos):
 
     def setup(self, context):
         self.create_camera_preview(context)
-        # self.create_adjust_camera(context)
-        # self.create_add_camera(context)
-        # self.create_camera_settings(context)
+        self.create_adjust_camera(context)
+        self.create_add_camera(context)
+        self.create_camera_settings(context)
 
     def draw_prepare(self, context):
         for i, gz in enumerate(self.gizmos):
@@ -67,5 +69,4 @@ class Button2DGizmos(bpy.types.GizmoGroup, Gizmos):
         self.refresh(context)
 
     def refresh(self, context):
-
         context.area.tag_redraw()
