@@ -1,11 +1,7 @@
 import bpy
 
 from ..utils import offset_2d_gizmo
-
-
-class PreviewCamera:
-    ...
-
+from .public_gizmo import PublicGizmo
 
 class Gizmos:
     def create_gizmo(self, name) -> bpy.types.Gizmo:
@@ -54,14 +50,10 @@ class Gizmos:
         self.gz_cam_pv = gz
 
 
-class Button2DGizmos(bpy.types.GizmoGroup, Gizmos):
+class Button2DGizmos(bpy.types.GizmoGroup, Gizmos, PublicGizmo):
     bl_idname = "Button_UI_2D_gizmos"
-    VIEW = 'CAMERA'
 
-    bl_label = "View Gizmo"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'WINDOW'
-    bl_options = {'PERSISTENT', 'SCALE', 'SHOW_MODAL_ALL'}
+    bl_label = "2D Button Gizmos"
 
     def setup(self, context):
         self.create_add_camera(context)
