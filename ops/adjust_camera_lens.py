@@ -7,6 +7,30 @@ from mathutils import Vector
 from ..utils import get_operator_bl_idname
 
 
+
+def wrap_blf_size(font_id: int, size):
+    if bpy.app.version >= (4, 0, 0):
+        blf.size(font_id, size)
+    else:
+        blf.size(font_id, size, 72)
+
+
+def view3d_camera_border(scene: bpy.types.Scene, region: bpy.types.Region, rv3d: bpy.types.RegionView3D) -> list[
+    Vector]:
+    obj = scene.camera
+    cam = obj.data
+
+    frame = cam.view_frame(scene=scene)
+
+    # move from object-space into world-space
+    frame = [obj.matrix_world @ v for v in frame]
+
+    # move into pixelspace
+    from bpy_extras.view3d_utils import location_3d_to_region_2d
+    frame_px = [location_3d_to_region_2d(region, rv3d, v) for v in frame]
+    return frame_px
+
+
 def draw_lens_callback(self, context):
     font_id = 0
 
@@ -18,16 +42,44 @@ def draw_lens_callback(self, context):
     px = frame_px[1]  # bottom right
     x = px[0]
     y = px[1]
-
-    # get text dimensions
-    wrap_blf_size(font_id, 30 * ui_scale())
+    ui_scale = bpy.context.preferences.system.dpi * 1 / 72
+    wrap_blf_size(font_id, 30 * ui_scale)
     text_width, text_height = blf.dimensions(font_id, f"{int(context.scene.camera.data.lens)} mm")
-    x = x - text_width - 10 * ui_scale()
-    y = y + int(text_height) - 10 * ui_scale()
+    x = x - text_width - 10 * ui_scale
+    y = y + int(text_height) - 10 * ui_scale
 
     blf.position(font_id, x, y, 0)
     blf.color(font_id, 1, 1, 1, 0.5)
     blf.draw(font_id, f"{int(context.scene.camera.data.lens)} mm")
+
+
+class Cam:
+    """
+    相机实用类
+    """
+
+    def __init__(self, cam):
+        self.cam = cam
+        self.startLocation = cam.location.copy()
+        self.startAngle = cam.data.angle
+
+    def restore(self):
+        self.cam.location = self.startLocation.copy()
+        self.cam.data.angle = self.startAngle
+
+    def limit_angle_range(self, value):
+        max_view_radian = 3.0  # 172d
+        min_view_radian = 0.007  # 0.367d
+        self.cam.data.angle = max(min(self.cam.data.angle + value, max_view_radian), min_view_radian)
+
+    def get_angle(self) -> float:
+        return self.cam.data.angle
+
+    def offsetLocation(self, localCorrectionVector):
+        self.cam.location = self.cam.location + (localCorrectionVector @ self.cam.matrix_world.inverted())
+
+    def get_local_point(self, point) -> Vector:
+        return self.cam.matrix_world.inverted() @ point
 
 
 class AdjustCameraLens(bpy.types.Operator):

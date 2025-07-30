@@ -90,50 +90,6 @@ def view3d_find() -> Union[tuple[bpy.types.Region, bpy.types.RegionView3D], tupl
     return None, None
 
 
-def view3d_camera_border(scene: bpy.types.Scene, region: bpy.types.Region, rv3d: bpy.types.RegionView3D) -> list[
-    Vector]:
-    obj = scene.camera
-    cam = obj.data
-
-    frame = cam.view_frame(scene=scene)
-
-    # move from object-space into world-space
-    frame = [obj.matrix_world @ v for v in frame]
-
-    # move into pixelspace
-    from bpy_extras.view3d_utils import location_3d_to_region_2d
-    frame_px = [location_3d_to_region_2d(region, rv3d, v) for v in frame]
-    return frame_px
-
-
-class Cam():
-    """
-    相机实用类
-    """
-
-    def __init__(self, cam):
-        self.cam = cam
-        self.startLocation = cam.location.copy()
-        self.startAngle = cam.data.angle
-
-    def restore(self):
-        self.cam.location = self.startLocation.copy()
-        self.cam.data.angle = self.startAngle
-
-    def limit_angle_range(self, value):
-        max_view_radian = 3.0  # 172d
-        min_view_radian = 0.007  # 0.367d
-        self.cam.data.angle = max(min(self.cam.data.angle + value, max_view_radian), min_view_radian)
-
-    def get_angle(self) -> float:
-        return self.cam.data.angle
-
-    def offsetLocation(self, localCorrectionVector):
-        self.cam.location = self.cam.location + (localCorrectionVector @ self.cam.matrix_world.inverted())
-
-    def get_local_point(self, point) -> Vector:
-        return self.cam.matrix_world.inverted() @ point
-
 
 # 以下所有方法都会出发depsgraph更新，无法用于实时动画set/get
 ###############################################################################

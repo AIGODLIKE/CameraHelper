@@ -1,101 +1,101 @@
+import blf
 import bpy
+import gpu
+from gpu_extras.presets import draw_texture_2d
 
 from ..utils import get_operator_bl_idname
 
-
-# class CameraThumbHandle:
-#     """Helper class for manage the handle/drawing instance"""
-#     _inst: CameraThumb = None
-#     _handle: int = None
-#
-#     # get the instance of the class
-#     @property
-#     def inst(self):
-#         return self.__class__._inst
-#
-#     # set the instance of the class
-#     @inst.setter
-#     def inst(self, value: CameraThumb):
-#         self.__class__._inst = value
-#
-#     @property
-#     def handle(self):
-#         return self.__class__._handle
-#
-#     @handle.setter
-#     def handle(self, value: int):
-#         self.__class__._handle = value
-#
-#     @staticmethod
-#     def clear_handle():
-#         if CameraThumbHandle.inst and not bpy.context.window_manager.camhp_pv.pin:
-#             try:
-#                 SpaceView3D.draw_handler_remove(CameraThumbHandle.handle, 'WINDOW')
-#             except Exception:
-#                 print("Handle C_HANDLE_CAM_PV already removed")
-#
-#             CameraThumbHandle.handle = None
-#             CameraThumbHandle.inst = None
-#
-#     @staticmethod
-#     def add_handle(context, depsgraph):
-#         if CameraThumbHandle.handle is None:
-#             CameraThumbHandle.inst = CameraThumb(context, depsgraph)
-#             CameraThumbHandle.handle = SpaceView3D.draw_handler_add(CameraThumbHandle.inst, (context,), 'WINDOW',
-#                                                                     'POST_PIXEL')
-#
-#
-# def clear_wrap(self, context):
-#     CameraThumbHandle.clear_handle()
-#     if self.enable:
-#         CameraThumbHandle.add_handle(context, context.evaluated_depsgraph_get())
-#
-#
-# class CameraPV(PropertyGroup):
-#     enable: BoolProperty(name="Enable", default=False, options={'HIDDEN'}, update=clear_wrap)
-#     pin: BoolProperty(name="Pin Selected Camera", default=False, description='Pin Selected Camera',
-#                       update=lambda self, context: setattr(context.window_manager.camhp_pv, 'pin_cam', context.object),
-#                       options={'HIDDEN'})
-#     pin_cam: PointerProperty(name="Pinned Camera", type=bpy.types.Object, description='Pinned Camera')
-#
-#     show_overlay: BoolProperty(name="Show Overlay", default=False,
-#                                description='Show Overlay', options={'HIDDEN'})
 
 class PreviewCamera(bpy.types.Operator):
     """Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera\nCtrl Shift Click: Send to Viewer"""
     bl_idname = get_operator_bl_idname("preview_camera")
     bl_label = "Preview Camera"
 
+    camera_preview_enabled = False
+    camera_preview_pin = False
+    camera_preview_handle = None
+    timer = None
+
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'VIEW_3D'
+        return context.space_data.type == "VIEW_3D"
 
     def invoke(self, context, event):
-        if event.type == 'LEFTMOUSE':
-            if event.ctrl and not event.shift:
-                context.window_manager.camhp_pv.pin = False if context.window_manager.camhp_pv.pin else True
-            elif event.shift and event.ctrl:
+        if event.type == "LEFTMOUSE":
+            if event.shift and event.ctrl:
                 bpy.ops.camhp.pv_snap_shot()
+                return {"FINISHED"}
+            elif event.ctrl:
+                self.camera_preview_pin = self.camera_preview_pin ^ True
+                return {"FINISHED"}
             else:
-                context.window_manager.camhp_pv.enable = not context.window_manager.camhp_pv.enable
+                self.camera_preview_enabled = self.camera_preview_enabled ^ True
+                if not self.camera_preview_enabled:
+                    return {"FINISHED"}
+                else:
+                    self.camera_preview_handle = bpy.types.SpaceView3D.draw_handler_add(
+                        self.draw_preview,
+                        (context,),
+                        'WINDOW',
+                        "POST_PIXEL",
+                    )
 
-        context.area.tag_redraw()
-        return {'INTERFACE'}
+        # self.timer = context.window_manager.event_timer_add(0.01, window=context.window)
+        context.window_manager.modal_handler_add(self)
+        return {"RUNNING_MODAL", "PASS_THROUGH"}
+
+    def modal(self, context, event):
+        print("modal", event.value, event.type, self.camera_preview_enabled, self.camera_preview_pin, end="\r")
+        if not self.camera_preview_enabled:
+            self.exit(context)
+            return {"FINISHED"}
+
+        return {"PASS_THROUGH"}
+
+    def exit(self, context):
+        print("exit")
+        if self.camera_preview_handle:
+            bpy.types.SpaceView3D.draw_handler_remove(self.camera_preview_handle, "WINDOW")
+            self.camera_preview_handle = None
+        if self.timer:
+            context.window_manager.event_timer_remove(self.timer)
+            self.timer = None
+        self.camera_preview_enabled = False
+        self.camera_preview_pin = False
+
+    def draw_preview(self, context):
+        scene = context.scene
+        WIDTH = 512
+        HEIGHT = 256
+        offscreen = gpu.types.GPUOffScreen(WIDTH, HEIGHT)
+        if scene.camera:
+            with gpu.matrix.push_pop():
+                gpu.matrix.translate((100, 100))
+                view_matrix = scene.camera.matrix_world.inverted()
+                projection_matrix = scene.camera.calc_matrix_camera(
+                    context.evaluated_depsgraph_get(),
+                    x=WIDTH,
+                    y=HEIGHT,
+                )
+                blf.draw(0, "AAA")
+                print("draw preview")
+                offscreen.draw_view3d(
+                    scene,
+                    context.view_layer,
+                    context.space_data,
+                    context.region,
+                    view_matrix,
+                    projection_matrix,
+                    do_color_management=True)
+
+                gpu.state.depth_mask_set(False)
+                draw_texture_2d(offscreen.texture_color, (10, 10), WIDTH, HEIGHT)
 
 
 def is_select_obj(context):
     return (
             context and
-            hasattr(context, 'object') and
+            hasattr(context, "object") and
             context.object and
-            context.object.type in {'CAMERA', 'EMPTY'}
+            context.object.type in {"CAMERA", "EMPTY"}
     )
-
-# @persistent
-# def draw_handle(scene, depsgraph):
-#     context = bpy.context
-#
-#     if is_select_obj(context):
-#         CameraThumbHandle.add_handle(context, depsgraph)
-#     else:
-#         CameraThumbHandle.clear_handle()

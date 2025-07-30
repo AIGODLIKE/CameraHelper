@@ -13,16 +13,6 @@ class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
     bl_idname = "camhp.pv_snap_shot"
     bl_label = "Snap Shot"
 
-    # if self.camera_preview_enabled:
-    #     self.gz_cam_pv.color = 0.08, 0.6, 0.08
-    #     self.gz_cam_pv.color_highlight = 0.28, 0.8, 0.28
-    #
-    #     if self.camera_preview_pin:
-    #         self.gz_cam_pv.color = 0.8, 0.2, 0.2
-    #         self.gz_cam_pv.color_highlight = 1, 0.2, 0.2
-    # else:
-    #     self.gz_cam_pv.color = 0.08, 0.08, 0.08
-    #     self.gz_cam_pv.color_highlight = 0.28, 0.28, 0.28
     @classmethod
     def poll(cls, context):
         return CameraThumbHandle.inst
