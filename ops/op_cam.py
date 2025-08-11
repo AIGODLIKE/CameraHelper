@@ -1,14 +1,13 @@
-import bpy
+from math import tan, radians
+
 import blf
-
-from bpy.types import Operator
+import bpy
 from bpy.props import EnumProperty, StringProperty
-
+from bpy.types import Operator
 from mathutils import Vector
-from math import tan, radians, sqrt
 
-from .utils import Cam
 from .draw_utils.shader import wrap_blf_size, ui_scale
+from .utils import Cam
 
 
 class CAMHP_OT_move_view_between_cams(Operator):
@@ -183,21 +182,31 @@ class CAMHP_OT_add_view_cam(Operator):
         cam_data = bpy.data.cameras.new(name='Camera')
         cam = bpy.data.objects.new('Camera', cam_data)
         context.collection.objects.link(cam)
-        # 设置
+
         cam.data.show_name = True
-        # 进入视图
         context.scene.camera = cam
         context.view_layer.objects.active = cam
-        try:
-            bpy.ops.view3d.camera_to_view()
-        except:
-            pass
 
-        area = context.area
-        r3d = area.spaces[0].region_3d
-        r3d.view_camera_zoom = 0
+        r3d = context.area.spaces[0].region_3d
+        view_persp: str = r3d.view_perspective
 
-        context.region.tag_redraw()
+        if view_persp == 'PERSP':
+            try:
+                bpy.ops.view3d.camera_to_view()
+            except:
+                pass
+            r3d.view_camera_zoom = 0
+            context.region.tag_redraw()
+        elif view_persp == 'ORTHO':
+            view_distance = r3d.view_distance
+            cam.data.type = 'ORTHO'
+            cam.data.ortho_scale = view_distance
+            try:
+                bpy.ops.view3d.camera_to_view()
+            except:
+                pass
+            r3d.view_camera_zoom = 0
+            context.region.tag_redraw()
 
         return {"FINISHED"}
 

@@ -1,9 +1,9 @@
-import bpy
 import math
-from mathutils import Vector, Euler, Matrix
-from bpy.types import GizmoGroup, SpaceView3D, PropertyGroup
 
-from .gz_custom import GizmoInfo_2D
+import bpy
+from bpy.types import GizmoGroup
+from mathutils import Vector, Euler
+
 from ..ops.draw_utils.shader import ui_scale as ui
 
 
@@ -14,18 +14,21 @@ class GizmoGroupBase:
     bl_region_type = 'WINDOW'
     bl_options = {'PERSISTENT', 'SCALE', 'SHOW_MODAL_ALL'}
 
-    VIEW = None
+    COMPAT_VIEWS: set = {"CAMERA", "PERSP", "ORTHO"}
 
     @classmethod
     def poll(cls, context):
-        if context.area.type == 'VIEW_3D':
-            vp = context.area.spaces[0].region_3d.view_perspective
+        if context.area.type != 'VIEW_3D':
+            return
 
-            if cls.VIEW == 'CAMERA' and context.scene.camera:
-                return vp == cls.VIEW
+        vp = context.area.spaces[0].region_3d.view_perspective
+        if vp not in cls.COMPAT_VIEWS:
+            return
 
-            elif cls.VIEW == 'PERSP':
-                return vp == cls.VIEW
+        if vp == 'CAMERA':
+            return context.scene.camera
+        else:
+            return True
 
     def draw_prepare(self, context):
         # ui scale
@@ -73,7 +76,7 @@ class GizmoGroupBase:
 class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
     bl_idname = "CAMHP_UI_persp_view"
 
-    VIEW = 'PERSP'
+    COMPAT_VIEWS = {'PERSP', 'ORTHO'}
 
     def setup(self, context):
         gz = self.gizmos.new("GIZMO_GT_button_2d")
@@ -127,7 +130,7 @@ class CAMHP_UI_persp_view(GizmoGroupBase, GizmoGroup):
 class CAMHP_UI_cam_view(GizmoGroupBase, GizmoGroup):
     bl_idname = "CAMHP_UI_cam_view"
 
-    VIEW = 'CAMERA'
+    COMPAT_VIEWS = {'CAMERA'}
 
     def draw_prepare(self, context):
         super().draw_prepare(context)
@@ -248,7 +251,7 @@ class CAMHP_UI_motion_curve_gz(GizmoGroupBase, GizmoGroup):
 
     def setup(self, context):
         self._move_gz = dict()
-        self._rotate_gz =dict()
+        self._rotate_gz = dict()
         self.gz_motion_cam = None
 
         self.cam_list = [item.camera for item in context.object.motion_cam.list]
