@@ -5,34 +5,33 @@ from gpu_extras.presets import draw_texture_2d
 from ..utils import get_operator_bl_idname
 
 
-class PreviewCamera(bpy.types.Operator):
+class Camera:
     """Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera\nCtrl Shift Click: Send to Viewer"""
-    bl_idname = get_operator_bl_idname("preview_camera")
-    bl_label = "Preview Camera"
 
-    check_data = {}
-    camera_data = {}
+    camera_data = {
+        # area:{
+        # camera_name:str,
+        # camera_size:float,
+        # offset:Vector
+        # pin:bool,
+        # }
+    }
 
     @classmethod
-    def poll(cls, context):
-        return context.space_data.type == "VIEW_3D"
+    def pin_selected_camera(cls, context):
+        data = cls.camera_data
+        area_hash = hash(context.area)
+        if area_hash in data:
+            data[area_hash] = data[area_hash] ^ True
 
-    def invoke(self, context, event):
+    @classmethod
+    def switch_preview(cls, context):
+        data = cls.camera_data
         ah = hash(context.area)
-        self.update_camera_texture(context)
-        data = self.__class__.check_data
-        if event.type == "LEFTMOUSE":
-            if event.shift and event.ctrl:
-                bpy.ops.camhp.pv_snap_shot()
-            elif event.ctrl:
-                if ah in data:
-                    data[ah] = data[ah] ^ True
-            else:
-                if ah in data:
-                    data.pop(ah)
-                else:
-                    data[ah] = False
-        return {"FINISHED"}
+        if ah in data:
+            data.pop(ah)
+        else:
+            data[ah] = False
 
     @classmethod
     def update_camera_texture(cls, context):
@@ -74,9 +73,33 @@ class PreviewCamera(bpy.types.Operator):
     @classmethod
     def check_is_draw(cls, context):
         ah = hash(context.area)
-        return ah in cls.check_data
+        return ah in cls.camera_data
 
     @classmethod
     def check_is_pin(cls, context):
-        ah = hash(context.area)
-        return ah in cls.check_data and cls.check_data[ah]
+        area_hash = hash(context.area)
+        return area_hash in cls.camera_data and cls.camera_data[area_hash].get("pin", False)
+
+
+class PreviewCamera(bpy.types.Operator):
+    """Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera\nCtrl Shift Click: Send to Viewer"""
+    bl_idname = get_operator_bl_idname("preview_camera")
+    bl_label = "Preview Camera"
+
+    check_data = {}
+    camera_data = {}
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data.type == "VIEW_3D"
+
+    def invoke(self, context, event):
+        Camera.update_camera_texture(context)
+        if event.type == "LEFTMOUSE":
+            if event.shift and event.ctrl:
+                bpy.ops.camhp.pv_snap_shot()
+            elif event.ctrl:
+                Camera.pin_selected_camera(context)
+            else:
+                Camera.switch_preview(context)
+        return {"FINISHED"}
