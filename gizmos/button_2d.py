@@ -1,7 +1,9 @@
 import bpy
 
-from ..utils import offset_2d_gizmo
 from .public_gizmo import PublicGizmo
+from ..utils.gizmo import offset_2d_gizmo
+from ..ops.preview_camera import CameraThumbnails
+
 
 class Gizmos:
     def create_gizmo(self, name) -> bpy.types.Gizmo:
@@ -68,14 +70,5 @@ class Button2DGizmos(bpy.types.GizmoGroup, Gizmos, PublicGizmo):
         self.refresh(context)
 
     def refresh(self, context):
+        CameraThumbnails.update_2d_button_color(context, self.gz_cam_pv)
         context.area.tag_redraw()
-        # if self.camera_preview_enabled:
-        #     self.gz_cam_pv.color = 0.08, 0.6, 0.08
-        #     self.gz_cam_pv.color_highlight = 0.28, 0.8, 0.28
-        #
-        #     if self.camera_preview_pin:
-        #         self.gz_cam_pv.color = 0.8, 0.2, 0.2
-        #         self.gz_cam_pv.color_highlight = 1, 0.2, 0.2
-        # else:
-        #     self.gz_cam_pv.color = 0.08, 0.08, 0.08
-        #     self.gz_cam_pv.color_highlight = 0.28, 0.28, 0.28

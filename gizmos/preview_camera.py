@@ -1,38 +1,77 @@
+import blf
 import bpy
-import gpu
+import gpu.matrix
+from mathutils import Vector
 
 from .public_gizmo import PublicGizmo
+from ..debug import DEBUG_PREVIEW_CAMERA
+from ..ops.preview_camera import CameraThumbnails
+from ..utils.area import area_offset
+from ..utils.gpu import draw_box
 
 
 class PreviewCameraGizmo(bpy.types.Gizmo):
     bl_idname = "PREVIEW_CAMERA_GT_gizmo"
+    bl_options = {"PERSISTENT", "SCALE", "SHOW_MODAL_ALL", "UNDO", "GRAB_CURSOR"}
 
-    def setup(self):
-        ...
+    draw_points = None
+    is_hover = None
+    start_offset = None
+    start_mouse = None
+    offset_after = None
 
     def invoke(self, context, event):
-        if event.type in {'RIGHTMOUSE', 'ESC'}:
-            self.exit(context)
-            return {'CANCELLED'}
+        self.start_offset = CameraThumbnails.camera_data[hash(context.area)]["offset"]
+        self.start_mouse = Vector((event.mouse_region_x, event.mouse_region_y))
+        print("invoke")
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event, tweak):
+        print("", event.type, event.value, CameraThumbnails.camera_data[hash(context.area)])
         if event.type == "LEFTMOUSE":
             return {"FINISHED"}
+        elif event.type in {'RIGHTMOUSE', 'ESC'}:
+            return {'CANCELLED'}
+        mouse = Vector((event.mouse_region_x, event.mouse_region_y))
+        diff = self.start_mouse - mouse
+        self.offset_after = offset = self.start_offset + Vector((-diff.x, diff.y))
+        CameraThumbnails.camera_data[hash(context.area)]["offset"] = offset
+        context.area.tag_redraw()
         return {'RUNNING_MODAL'}
 
+    def exit(self, context, cancel):
+        print("exit", context, cancel)
+        if cancel:
+            CameraThumbnails.camera_data[hash(context.area)]["offset"] = self.start_offset
+        else:
+            CameraThumbnails.camera_data[hash(context.area)]["offset"] = self.offset_after
+
     def draw(self, context):
-        from gpu_extras.batch import batch_for_shader
+        """
+        从左上角开始绘制
+        """
+        w, h = 200, 100
+        with gpu.matrix.push_pop():
+            offset = CameraThumbnails.camera_data[hash(context.area)]["offset"]
+            x, y = area_offset(context) + offset
+            y = context.area.height - y
+            y -= h
+            gpu.matrix.translate((x, y))
 
-        vertices = ((100, 100), (300, 100), (100, 200), (300, 200))
-        indices = ((0, 1, 2), (2, 1, 3))
+            color = (.2, .2, .2, .5) if self.is_hover else (.1, .1, .1, 0)
+            draw_box(0, w, 0, h, color)
 
-        shader = gpu.shader.from_builtin('UNIFORM_COLOR')
-        batch = batch_for_shader(shader, 'TRIS', {"pos": vertices}, indices=indices)
-
-        shader.uniform_float("color", (0, 0.5, 0.5, 1.0))
-        batch.draw(shader)
-        # Camera.draw_texture(context)
+            # DEBUG
+            if DEBUG_PREVIEW_CAMERA:
+                blf.position(0, 0, 0, 1)
+                for text in (
+                        f"Preview Camera {self.is_hover}",
+                        f"{self.draw_points}",
+                        str(CameraThumbnails.camera_data[hash(context.area)])
+                ):
+                    gpu.matrix.translate((0, -15))
+                    blf.draw(0, text)
+            self.draw_points = (x, y), (x + w, y + h)
 
     def test_select(self, context, mouse_pos):
         if self.draw_points is None:
@@ -53,12 +92,16 @@ class PreviewCameraGizmos(bpy.types.GizmoGroup, PublicGizmo):
     bl_idname = "Preview_Camera_UI_gizmos"
     bl_label = "Preview Camera Gizmos"
 
+    @classmethod
+    def poll(cls, context):
+        return CameraThumbnails.check_is_draw(context)
+
     def setup(self, context):
-        self.preview_camera = self.gizmos.new(PreviewCameraGizmo.bl_idname)
+        gz = self.preview_camera = self.gizmos.new(PreviewCameraGizmo.bl_idname)
+        gz.use_draw_modal = True
 
     def refresh(self, context):
         context.area.tag_redraw()
-        print(self.bl_idname, "refresh")
 
     def draw_prepare(self, context):
-        print("draw_prepare", self.bl_idname)
+        ...
