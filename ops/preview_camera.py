@@ -18,6 +18,9 @@ class CameraThumbnails:
         # texture:gpu.types.GPUOffScreen
         # }
     }
+    texture_data = {
+        # camera_name:gpu.types.GPUOffScreen
+    }
 
     @classmethod
     def pin_selected_camera(cls, context, camera: bpy.types.Camera):
@@ -46,21 +49,21 @@ class CameraThumbnails:
 
     @classmethod
     def update_camera_texture(cls, context):
+        from ..utils import get_camera_preview_size
         print("update_camera_texture")
         scene = context.scene
-        WIDTH = 512
-        HEIGHT = 256
+        w, h = get_camera_preview_size(context)
         if scene.camera:
             cn = scene.camera.name
             if cn not in cls.camera_data:
-                offscreen = gpu.types.GPUOffScreen(WIDTH, HEIGHT)
+                offscreen = gpu.types.GPUOffScreen(w, h)
             else:
                 offscreen = cls.camera_data[cn]
             view_matrix = scene.camera.matrix_world.inverted()
             projection_matrix = scene.camera.calc_matrix_camera(
                 context.evaluated_depsgraph_get(),
-                x=WIDTH,
-                y=HEIGHT,
+                x=w,
+                y=h,
             )
             offscreen.draw_view3d(
                 scene,
@@ -70,7 +73,7 @@ class CameraThumbnails:
                 view_matrix,
                 projection_matrix,
                 do_color_management=False)
-            cls.camera_data[cn] = offscreen
+            cls.texture_data[cn] = offscreen.texture_color
 
     @classmethod
     def draw_texture(cls, context):

@@ -32,3 +32,16 @@ def get_camera(context) -> "None | bpy.types.Camera":
     if context.scene.camera:
         return context.scene.camera
     return None
+
+
+def get_camera_preview_size(context):
+    pref = get_pref()
+    max_height = pref.camera_thumb.max_width
+    max_width = pref.camera_thumb.max_height
+    height = max_height
+    ratio = context.scene.render.resolution_x / context.scene.render.resolution_y
+    width = int(height * ratio)
+    if width > max_width:
+        width = max_width
+        height = int(width / ratio)
+    return width, height

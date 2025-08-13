@@ -1,6 +1,7 @@
 import blf
 import bpy
 import gpu.matrix
+from gpu_extras.presets import draw_texture_2d
 from mathutils import Vector
 
 from .public_gizmo import PublicGizmo
@@ -50,24 +51,29 @@ class PreviewCameraGizmo(bpy.types.Gizmo):
         """
         从左上角开始绘制
         """
-        w, h = 200, 100
+        from ..utils import get_camera_preview_size
+        w, h = get_camera_preview_size(context)
         with gpu.matrix.push_pop():
-            offset = CameraThumbnails.camera_data[hash(context.area)]["offset"]
+            data = CameraThumbnails.camera_data[hash(context.area)]
+            offset = data["offset"]
             x, y = area_offset(context) + offset
             y = context.area.height - y
             y -= h
             gpu.matrix.translate((x, y))
 
-            color = (.2, .2, .2, .5) if self.is_hover else (.1, .1, .1, 0)
-            draw_box(0, w, 0, h, color)
+            color = (.1, .1, .1, 0) if self.is_hover else (.2, .2, .2, .5)
+            border = 5
+            draw_box(-border, w + border, -border, h + border, color)
 
+            if texture := CameraThumbnails.texture_data.get(data["camera_name"], None):
+                draw_texture_2d(texture, (0, 0), w, h)
             # DEBUG
             if DEBUG_PREVIEW_CAMERA:
                 blf.position(0, 0, 0, 1)
                 for text in (
                         f"Preview Camera {self.is_hover}",
                         f"{self.draw_points}",
-                        str(CameraThumbnails.camera_data[hash(context.area)])
+                        str(data)
                 ):
                     gpu.matrix.translate((0, -15))
                     blf.draw(0, text)
