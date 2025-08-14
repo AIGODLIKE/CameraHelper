@@ -22,13 +22,15 @@ class PreviewCameraGizmo(bpy.types.Gizmo):
     offset_after = None
 
     def invoke(self, context, event):
-        self.start_offset = CameraThumbnails.camera_data[hash(context.area)]["offset"]
+        self.start_offset = CameraThumbnails.get_camera_data(context.area)["offset"]
         self.start_mouse = Vector((event.mouse_region_x, event.mouse_region_y))
-        print("invoke")
+        if DEBUG_PREVIEW_CAMERA:
+            print("invoke")
         return {'RUNNING_MODAL'}
 
     def modal(self, context, event, tweak):
-        print("", event.type, event.value, CameraThumbnails.camera_data[hash(context.area)])
+        if DEBUG_PREVIEW_CAMERA:
+            print("", event.type, event.value, CameraThumbnails.get_camera_data(context.area))
         if event.type == "LEFTMOUSE":
             return {"FINISHED"}
         elif event.type in {'RIGHTMOUSE', 'ESC'}:
@@ -36,16 +38,17 @@ class PreviewCameraGizmo(bpy.types.Gizmo):
         mouse = Vector((event.mouse_region_x, event.mouse_region_y))
         diff = self.start_mouse - mouse
         self.offset_after = offset = self.start_offset + Vector((-diff.x, diff.y))
-        CameraThumbnails.camera_data[hash(context.area)]["offset"] = offset
+        CameraThumbnails.get_camera_data(context.area)["offset"] = offset
         context.area.tag_redraw()
         return {'RUNNING_MODAL'}
 
     def exit(self, context, cancel):
-        print("exit", context, cancel)
+        if DEBUG_PREVIEW_CAMERA:
+            print("exit", context, cancel)
         if cancel:
-            CameraThumbnails.camera_data[hash(context.area)]["offset"] = self.start_offset
+            CameraThumbnails.get_camera_data(context.area)["offset"] = self.start_offset
         else:
-            CameraThumbnails.camera_data[hash(context.area)]["offset"] = self.offset_after
+            CameraThumbnails.get_camera_data(context.area)["offset"] = self.offset_after
 
     def draw(self, context):
         """
@@ -54,7 +57,7 @@ class PreviewCameraGizmo(bpy.types.Gizmo):
         from ..utils import get_camera_preview_size
         w, h = get_camera_preview_size(context)
         with gpu.matrix.push_pop():
-            data = CameraThumbnails.camera_data[hash(context.area)]
+            data = CameraThumbnails.get_camera_data(context.area)
             offset = data["offset"]
             x, y = area_offset(context) + offset
             y = context.area.height - y
@@ -65,8 +68,9 @@ class PreviewCameraGizmo(bpy.types.Gizmo):
             border = 5
             draw_box(-border, w + border, -border, h + border, color)
 
-            if texture := CameraThumbnails.texture_data.get(data["camera_name"], None):
-                draw_texture_2d(texture, (0, 0), w, h)
+            if texture_data := CameraThumbnails.texture_data.get(data["camera_name"], None):
+                if texture := texture_data.get("texture", None):
+                    draw_texture_2d(texture, (0, 0), w, h)
             # DEBUG
             if DEBUG_PREVIEW_CAMERA:
                 blf.position(0, 0, 0, 1)
@@ -91,7 +95,8 @@ class PreviewCameraGizmo(bpy.types.Gizmo):
         return is_hover
 
     def refresh(self, context):
-        print(self.bl_idname, "refresh")
+        if DEBUG_PREVIEW_CAMERA:
+            print(self.bl_idname, "refresh")
 
 
 class PreviewCameraGizmos(bpy.types.GizmoGroup, PublicGizmo):
