@@ -21,7 +21,7 @@ def get_panel_bl_idname(suffix: str) -> str:
 
 
 def get_camera(context) -> "None | bpy.types.Camera":
-    if context.object and context.object.type == "CAMERA":
+    if hasattr(context, "object") and context.object and context.object.type == "CAMERA":
         return context.object
     for obj in context.selected_objects:
         if obj.type == "CAMERA":

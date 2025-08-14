@@ -2,37 +2,37 @@ import bpy
 
 
 class CAMERA_HELPER_MT_Switch_Camera(bpy.types.Menu):
-    bl_label = 'SwitchCamera'
-    bl_space_type = 'VIEW_3D'
+    bl_label = "Switch Camera"
+    bl_space_type = "VIEW_3D"
     bl_region_type = "WINDOW"
 
     def draw(self, context):
         from ..ops.switch_camera import SwitchCamera
         layout = self.layout
-        layout.operator_context = 'INVOKE_DEFAULT'
+        layout.operator_context = "INVOKE_DEFAULT"
         for i, obj in enumerate(bpy.data.objects):
-            if obj.type != 'CAMERA':
+            if obj.type != "CAMERA":
                 continue
             name = obj.name
             if obj is context.scene.camera:
-                icon = 'VIEW_CAMERA'
+                icon = "VIEW_CAMERA"
             else:
-                icon = 'DOT'
-            ops = layout.operator(SwitchCamera.bl_idname, text=name, icon=icon)
-            ops.tg_cam = obj.name
+                icon = "CAMERA_DATA"
+            layout.context_pointer_set("camera", obj)
+            layout.operator(SwitchCamera.bl_idname, text=name, icon=icon, translate=False)
 
 
 class CAMHP_MT_popup_cam_settings(bpy.types.Menu):
     """Properties"""
-    bl_label = 'Camera Settings'
-    bl_space_type = 'VIEW_3D'
+    bl_label = "Camera Settings"
+    bl_space_type = "VIEW_3D"
     bl_region_type = "WINDOW"
 
     def draw(self, context_):
         layout = self.layout
-        layout.popover(panel='CAMHP_PT_pop_cam_lens')
-        layout.popover(panel='CAMHP_PT_pop_cam_dof')
-        layout.popover(panel='CAMHP_PT_pop_cam_comp_panel', text='Guide')
+        layout.popover(panel="CAMHP_PT_pop_cam_lens")
+        layout.popover(panel="CAMHP_PT_pop_cam_dof")
+        layout.popover(panel="CAMHP_PT_pop_cam_comp_panel", text="Guide")
 
 
 def register():
