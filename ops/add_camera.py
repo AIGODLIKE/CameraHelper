@@ -1,4 +1,5 @@
 import bpy
+
 from ..utils import get_operator_bl_idname
 
 
@@ -11,6 +12,14 @@ class AddCamera(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return context.area and context.area.type == 'VIEW_3D'
+
+    def invoke(self, context, event):
+        if event.ctrl:
+            bpy.ops.camhp.add_motion_cams('INVOKE_DEFAULT')
+            bpy.ops.ed.undo_push()
+            return {'FINISHED'}
+        else:
+            return self.execute(context)
 
     def execute(self, context):
         # 创建相机
@@ -35,11 +44,3 @@ class AddCamera(bpy.types.Operator):
         context.region.tag_redraw()
 
         return {"FINISHED"}
-
-    def invoke(self, context, event):
-        if event.ctrl:
-            bpy.ops.camhp.add_motion_cams('INVOKE_DEFAULT')
-            bpy.ops.ed.undo_push()
-            return {'FINISHED'}
-        else:
-            return self.execute(context)
