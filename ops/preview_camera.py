@@ -2,7 +2,6 @@ import time
 
 import bpy
 import gpu
-from gpu_extras.presets import draw_texture_2d
 from mathutils import Vector
 
 from ..utils import get_operator_bl_idname, get_camera
@@ -59,8 +58,12 @@ class CameraThumbnails:
         camera = get_camera(context)
 
         for key, value in cls.camera_data.items():  # 切换预览相机
-            if value["camera_name"] != camera.name and value.get("pin", False) is False:
-                value["camera_name"] = camera.name
+            if value["camera_name"] != camera.name:
+                if value.get("pin", False) is False:
+                    value["camera_name"] = camera.name
+                else:
+                    if pin_camera := context.scene.objects.get(value["camera_name"], None):
+                        camera = pin_camera
 
         for area in context.screen.areas:
             if area.type == "VIEW_3D":
@@ -68,12 +71,15 @@ class CameraThumbnails:
                     if region.type == "WINDOW":
                         for space in area.spaces:
                             if space.type == "VIEW_3D":
+                                ori_show_overlay = space.overlay.show_overlays
+                                space.overlay.show_overlays = False
                                 with context.temp_override(
                                         area=area,
                                         region=region,
                                         space_data=space,
                                 ):  # 更新相机纹理
                                     cls.update_camera_texture(context, camera)
+                                    space.overlay.show_overlays = ori_show_overlay
                                     return
         if DEBUG_PREVIEW_CAMERA:
             print(f"update {time.time() - start_time}s")
@@ -124,14 +130,15 @@ class CameraThumbnails:
                 # "info": camera_info,
             }
 
-    @classmethod
-    def draw_texture(cls, context):
-        scene = context.scene
-        if scene.camera and scene.camera.name in cls.camera_data and cls.check_is_draw(context):
-            offscreen = cls.camera_data[scene.camera.name]
-            WIDTH = 512
-            HEIGHT = 256
-            draw_texture_2d(offscreen.texture_color, (10, 10), WIDTH, HEIGHT)
+    # @classmethod
+    # def draw_texture(cls, context):
+    #     scene = context.scene
+    #     gpu.state.depth_mask_set(False)
+    #     if scene.camera and scene.camera.name in cls.camera_data and cls.check_is_draw(context):
+    #         offscreen = cls.camera_data[scene.camera.name]
+    #         WIDTH = 512
+    #         HEIGHT = 256
+    #         draw_texture_2d(offscreen.texture_color, (10, 10), WIDTH, HEIGHT)
 
     @classmethod
     def check_is_draw(cls, context):
@@ -177,7 +184,7 @@ class PreviewCamera(bpy.types.Operator):
 
     def invoke(self, context, event):
         camera = get_camera(context)
-        CameraThumbnails.update_camera_texture(context, camera)
+        CameraThumbnails.update()
         if event.type == "LEFTMOUSE":
             if event.shift and event.ctrl:
                 bpy.ops.camhp.pv_snap_shot()

@@ -57,6 +57,7 @@ class PreviewCameraAreaGizmo(bpy.types.Gizmo):
         from ..utils import get_camera_preview_size
         w, h = get_camera_preview_size(context)
         with gpu.matrix.push_pop():
+            gpu.state.depth_mask_set(False)
             data = CameraThumbnails.get_camera_data(context.area)
             offset = data["offset"]
             x, y = area_offset(context) + offset
