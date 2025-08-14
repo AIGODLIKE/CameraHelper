@@ -137,28 +137,14 @@ class CAMHP_PT_pop_cam_lens(pop_cam_panel):
         sub.prop(cam, "clip_end", text="End")
 
 
-class CAMHP_MT_popup_cam_settings(bpy.types.Menu):
-    """Properties"""
-    bl_label = 'Camera Settings'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = "WINDOW"
-
-    def draw(self, context_):
-        layout = self.layout
-        layout.popover(panel='CAMHP_PT_pop_cam_lens')
-        layout.popover(panel='CAMHP_PT_pop_cam_dof')
-        layout.popover(panel='CAMHP_PT_pop_cam_comp_panel', text='Guide')
-
 
 def register():
     bpy.utils.register_class(CAMHP_PT_pop_cam_comp_panel)
     bpy.utils.register_class(CAMHP_PT_pop_cam_dof)
     bpy.utils.register_class(CAMHP_PT_pop_cam_lens)
-    bpy.utils.register_class(CAMHP_MT_popup_cam_settings)
 
 
 def unregister():
     bpy.utils.unregister_class(CAMHP_PT_pop_cam_comp_panel)
     bpy.utils.unregister_class(CAMHP_PT_pop_cam_dof)
     bpy.utils.unregister_class(CAMHP_PT_pop_cam_lens)
-    bpy.utils.unregister_class(CAMHP_MT_popup_cam_settings)

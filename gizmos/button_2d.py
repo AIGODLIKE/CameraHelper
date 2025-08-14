@@ -52,11 +52,12 @@ class Gizmos:
         self.gz_cam_pv = gz
 
     def create_camera_switch(self, context):
-        from ..ops.switch_camera import SwitchCamera
+        from ..ui.menu import CAMERA_HELPER_MT_Switch_Camera
         gz = self.create_gizmo("GIZMO_GT_button_2d")
         gz.use_event_handle_all = True
         gz.icon = 'VIEW_CAMERA'
-        gz.target_set_operator(SwitchCamera.bl_idname)
+        ops = gz.target_set_operator("wm.call_menu")
+        ops.name = CAMERA_HELPER_MT_Switch_Camera.__name__
         self.gz_cam_switch = gz
 
 
