@@ -81,14 +81,13 @@ class CameraThumbnails:
     @classmethod
     def update_camera_texture(cls, context, camera):
         from ..utils import get_camera_preview_size
-        from ..utils.property import get_property
 
         is_update = True
         scene = context.scene
         name = camera.name
 
         w, h = get_camera_preview_size(context)
-        camera_info = get_property(camera, exclude=("original",))
+        # camera_info = get_property(camera, exclude=("original",))
 
         # 在修改相机的时候更新纹理,会出现物体不同步,暂时关闭
         # is_cache = name in cls.texture_data
@@ -121,8 +120,8 @@ class CameraThumbnails:
             )
             cls.texture_data[name] = {
                 "texture": offscreen.texture_color,
-                "matrix": camera.matrix_world.copy(),
-                "info": camera_info,
+                # "matrix": camera.matrix_world.copy(),
+                # "info": camera_info,
             }
 
     @classmethod

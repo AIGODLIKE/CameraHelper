@@ -1,62 +1,56 @@
+import bpy
 
 
-
-@persistent
-def load_file_clear_handle(noob):
-    print('Camera Helper Clear Handle')
-    CameraThumbHandle.clear_handle()
-    bpy.context.window_manager.camhp_pv.enable = False
-
-
-class CAMHP_OT_pv_snap_shot(bpy.types.Operator):
+class SnapShot(bpy.types.Operator):
     """Snap Shot"""
     bl_idname = "camhp.pv_snap_shot"
     bl_label = "Snap Shot"
 
-    @classmethod
-    def poll(cls, context):
-        return CameraThumbHandle.inst
-
-    def invoke(self, context, event):
-        context.window_manager.camhp_snap_shot_image = True
-        return self.execute(context)
-
     def execute(self, context):
-        self.width = CameraThumbHandle.inst.width
-        self.height = CameraThumbHandle.inst.height
+        from .preview_camera import CameraThumbnails
+        area = context.area
+        if camera_data := CameraThumbnails.get_camera_data(area):
+            if camera_name := camera_data.get("camera_name", None):
+                if texture_data := CameraThumbnails.texture_data.get(camera_name, None):
+                    if texture := texture_data.get('texture', None):
+                        x = context.scene.render.resolution_x
+                        y = context.scene.render.resolution_y
+                        key  =f"Snap_Shot_{camera_name}"
+                        if key in bpy.data.images:
+                            img = bpy.data.images[key]
+                            bpy.data.images.remoe(img)
+                        img = bpy.data.images.new(name=key,
+                                                  width=x,
+                                                  height=y)
+                        img.scale(x, y)
 
-        cam = CameraThumbHandle.inst.cam
-        buffer = CameraThumbHandle.inst.buffer
+                        try:
+                            img.pixels.foreach_set(texture.read())
+                        except TypeError as e:
+                            print(e)
+                            return {'CANCELLED'}
 
-        if f'_SnapShot_{cam.name}' in bpy.data.images:
-            img = bpy.data.images[f'_SnapShot_{cam.name}']
-        else:
-            img = bpy.data.images.new(name=f'_SnapShot_{cam.name}',
-                                      width=self.width,
-                                      height=self.height)
-
-        img.scale(self.width, self.height)
-        try:
-            img.pixels.foreach_set(buffer)
-        except TypeError as e:
-            print(e)
-            return {'CANCELLED'}
-        # set resolution
-        ori_width = context.scene.render.resolution_x
-        ori_height = context.scene.render.resolution_y
-        context.scene.render.resolution_x = self.width
-        context.scene.render.resolution_y = self.height
-
-        bpy.ops.render.view_show('INVOKE_DEFAULT')
-        if context.window.screen.areas[0].type == 'IMAGE_EDITOR':
-            # set img as area active image
-            context.window.screen.areas[0].spaces[0].image = img
-
-        # restore
-        context.scene.render.resolution_x = ori_width
-        context.scene.render.resolution_y = ori_height
-
-        context.window_manager.camhp_snap_shot_image = False
-        self.report({'INFO'}, f'Snap Shot')
+                        bpy.ops.render.view_show('INVOKE_DEFAULT')
+                        for area in context.screen.areas:
+                            if area.type == 'IMAGE_EDITOR':
+                                for space in area.spaces:
+                                    if space.type == 'IMAGE_EDITOR':
+                                        space.image = img
+                                        break
+                        self.report({'INFO'}, f'Snap Shot')
+                # # set resolution
+                # ori_width = context.scene.render.resolution_x
+                # ori_height = context.scene.render.resolution_y
+                # context.scene.render.resolution_x = self.width
+                # context.scene.render.resolution_y = self.height
+                #
+                # bpy.ops.render.view_show('INVOKE_DEFAULT')
+                # if context.window.screen.areas[0].type == 'IMAGE_EDITOR':
+                #     # set img as area active image
+                #     context.window.screen.areas[0].spaces[0].image = img
+                #
+                # # restore
+                # context.scene.render.resolution_x = ori_width
+                # context.scene.render.resolution_y = ori_height
 
         return {'FINISHED'}

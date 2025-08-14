@@ -1,5 +1,7 @@
+import bpy
 
-class CAMHP_OT_move_view_between_cams(Operator):
+
+class CAMHP_OT_move_view_between_cams(bpy.types.Operator):
     bl_idname = 'camhp.move_view_between_cams'
     bl_label = 'Move View Between Cameras'
     bl_options = {"INTERNAL"}
@@ -7,7 +9,7 @@ class CAMHP_OT_move_view_between_cams(Operator):
     r3d = None  # 当前region
 
     # camera
-    tg_cam: StringProperty()  # pass in
+    tg_cam: bpy.props.StringProperty()  # pass in
     tg_loc = None
     tg_quat = None
 
@@ -28,15 +30,11 @@ class CAMHP_OT_move_view_between_cams(Operator):
         return context.area.type == 'VIEW_3D'
 
     def remove_handle(self):
-        # bpy.types.SpaceNodeEditor.draw_handler_remove(self._handle, 'WINDOW')
         bpy.context.window_manager.event_timer_remove(self._timer)
 
     def append_handle(self):
         self._timer = bpy.context.window_manager.event_timer_add(self.anim_time / self.anim_iter,
                                                                  window=bpy.context.window)  # 添加计时器检测状态
-        args = (self, bpy.context)
-        # self._handle = bpy.types.SpaceNodeEditor.draw_handler_add(draw_process_callback_px, args, 'WINDOW',
-        #                                                           'POST_PIXEL')
         bpy.context.window_manager.modal_handler_add(self)
 
     def offset_view(self, anim_fac):
@@ -73,9 +71,6 @@ class CAMHP_OT_move_view_between_cams(Operator):
         :return:
         """
         self.r3d.view_distance = 6
-        # self.r3d.view_distance = self.ori_view_distance[0]
-        # self.r3d.view_location = self.ori_view_location
-        # self.r3d.view_rotation = self.ori_view_rotation
         bpy.context.space_data.lens = self.ori_view_lens[0]
         bpy.context.scene.camera.data.passepartout_alpha = self.ori_passepartout_alpha
 
@@ -114,6 +109,4 @@ class CAMHP_OT_move_view_between_cams(Operator):
             # 移动动画
             self.offset_view(self.anim_fac)
             self.anim_fac += 1 / (self.anim_iter + 1)  # last delay
-
         return {"PASS_THROUGH"}
-
