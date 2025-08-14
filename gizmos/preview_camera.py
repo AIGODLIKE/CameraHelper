@@ -77,11 +77,13 @@ class PreviewCameraAreaGizmo(bpy.types.Gizmo):
                 blf.position(0, 0, 0, 1)
                 for text in (
                         f"Preview Camera {self.is_hover}",
+                        hash(context.area),
+                        texture_data,
                         f"{self.draw_points}",
                         str(data)
                 ):
                     gpu.matrix.translate((0, -15))
-                    blf.draw(0, text)
+                    blf.draw(0, str(text))
             self.draw_points = (x, y), (x + w, y + h)
 
     def test_select(self, context, mouse_pos):

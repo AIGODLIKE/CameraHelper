@@ -16,6 +16,7 @@ class CameraThumbnails:
         # camera_name:str,
         # offset:Vector
         # pin:bool,
+        # enabled:bool,
         # }
     }
     texture_data = {
@@ -29,7 +30,7 @@ class CameraThumbnails:
     @classmethod
     def pin_selected_camera(cls, context, camera: bpy.types.Camera):
         data = cls.camera_data
-        area_hash = hash(context.area)
+        area_hash = hash(get_area_max_parent(context.area))
         if area_hash not in data:
             cls.switch_preview(context, camera)
 
@@ -38,7 +39,7 @@ class CameraThumbnails:
     @classmethod
     def switch_preview(cls, context, camera: bpy.types.Camera):
         data = cls.camera_data
-        area_hash = hash(context.area)
+        area_hash = hash(get_area_max_parent(context.area))
         if area_hash in data:
             data[area_hash]["enabled"] = data[area_hash]["enabled"] ^ True
             # data.pop(area_hash)
@@ -57,32 +58,39 @@ class CameraThumbnails:
         context = bpy.context
         camera = get_camera(context)
 
-        for key, value in cls.camera_data.items():  # 切换预览相机
-            if value["camera_name"] != camera.name:
-                if value.get("pin", False) is False:
-                    value["camera_name"] = camera.name
-                else:
-                    if pin_camera := context.scene.objects.get(value["camera_name"], None):
-                        camera = pin_camera
+        if camera is not None:
+            for key, value in cls.camera_data.items():  # 切换预览相机
+                if value["camera_name"] != camera.name:
+                    if value.get("pin", False) is False:
+                        value["camera_name"] = camera.name
+                        cls.camera_data[key] = value
+                    else:
+                        if pin_camera := context.scene.objects.get(value["camera_name"], None):
+                            camera = pin_camera
 
-        for area in context.screen.areas:
-            if area.type == "VIEW_3D":
-                for region in area.regions:
-                    if region.type == "WINDOW":
-                        for space in area.spaces:
-                            if space.type == "VIEW_3D":
-                                ori_show_overlay = space.overlay.show_overlays
-                                space.overlay.show_overlays = False
-                                with context.temp_override(
-                                        area=area,
-                                        region=region,
-                                        space_data=space,
-                                ):  # 更新相机纹理
-                                    cls.update_camera_texture(context, camera)
-                                    space.overlay.show_overlays = ori_show_overlay
-                                    return
+        for camera_data in cls.camera_data.values():  # 更新相机纹理
+            camera_name = camera_data["camera_name"]
+            camera = context.scene.objects.get(camera_name, None)
+            enabled = camera_data.get("enabled", False)
+            if camera and enabled:
+                for area in context.screen.areas:
+                    if area.type == "VIEW_3D":
+                        for region in area.regions:
+                            if region.type == "WINDOW":
+                                for space in area.spaces:
+                                    if space.type == "VIEW_3D":
+                                        ori_show_overlay = space.overlay.show_overlays
+                                        space.overlay.show_overlays = False
+                                        with context.temp_override(
+                                                area=area,
+                                                region=region,
+                                                space_data=space,
+                                        ):
+                                            cls.update_camera_texture(context, camera)
+                                            space.overlay.show_overlays = ori_show_overlay
+
         if DEBUG_PREVIEW_CAMERA:
-            print(f"update {time.time() - start_time}s")
+            print(f"update {time.time() - start_time}s\t", camera)
 
     @classmethod
     def update_camera_texture(cls, context, camera):
@@ -126,19 +134,7 @@ class CameraThumbnails:
             )
             cls.texture_data[name] = {
                 "texture": offscreen.texture_color,
-                # "matrix": camera.matrix_world.copy(),
-                # "info": camera_info,
             }
-
-    # @classmethod
-    # def draw_texture(cls, context):
-    #     scene = context.scene
-    #     gpu.state.depth_mask_set(False)
-    #     if scene.camera and scene.camera.name in cls.camera_data and cls.check_is_draw(context):
-    #         offscreen = cls.camera_data[scene.camera.name]
-    #         WIDTH = 512
-    #         HEIGHT = 256
-    #         draw_texture_2d(offscreen.texture_color, (10, 10), WIDTH, HEIGHT)
 
     @classmethod
     def check_is_draw(cls, context):
@@ -192,5 +188,6 @@ class PreviewCamera(bpy.types.Operator):
                 CameraThumbnails.pin_selected_camera(context, camera)
             else:
                 CameraThumbnails.switch_preview(context, camera)
+        CameraThumbnails.update()
         context.area.tag_redraw()
         return {"FINISHED"}
