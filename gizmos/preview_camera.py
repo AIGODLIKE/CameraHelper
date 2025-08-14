@@ -11,7 +11,7 @@ from ..utils.area import area_offset
 from ..utils.gpu import draw_box
 
 
-class PreviewCameraGizmo(bpy.types.Gizmo):
+class PreviewCameraAreaGizmo(bpy.types.Gizmo):
     bl_idname = "PREVIEW_CAMERA_GT_gizmo"
     bl_options = {"PERSISTENT", "SCALE", "SHOW_MODAL_ALL", "UNDO", "GRAB_CURSOR"}
 
@@ -108,7 +108,7 @@ class PreviewCameraGizmos(bpy.types.GizmoGroup, PublicGizmo):
         return CameraThumbnails.check_is_draw(context)
 
     def setup(self, context):
-        gz = self.preview_camera = self.gizmos.new(PreviewCameraGizmo.bl_idname)
+        gz = self.preview_camera = self.gizmos.new(PreviewCameraAreaGizmo.bl_idname)
         gz.use_draw_modal = True
 
     def refresh(self, context):

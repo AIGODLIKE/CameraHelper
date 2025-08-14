@@ -1,8 +1,8 @@
 import bpy
 
 from .public_gizmo import PublicGizmo
-from ..utils.gizmo import offset_2d_gizmo
 from ..ops.preview_camera import CameraThumbnails
+from ..utils.gizmo import offset_2d_gizmo
 
 
 class Gizmos:
@@ -51,6 +51,14 @@ class Gizmos:
         gz.target_set_operator(PreviewCamera.bl_idname)
         self.gz_cam_pv = gz
 
+    def create_camera_switch(self, context):
+        from ..ops.switch_camera import SwitchCamera
+        gz = self.create_gizmo("GIZMO_GT_button_2d")
+        gz.use_event_handle_all = True
+        gz.icon = 'VIEW_CAMERA'
+        gz.target_set_operator(SwitchCamera.bl_idname)
+        self.gz_cam_switch = gz
+
 
 class Button2DGizmos(bpy.types.GizmoGroup, Gizmos, PublicGizmo):
     bl_idname = "Button_UI_2D_gizmos"
@@ -62,10 +70,36 @@ class Button2DGizmos(bpy.types.GizmoGroup, Gizmos, PublicGizmo):
         self.create_camera_preview(context)
         self.create_camera_settings(context)
         self.create_adjust_camera(context)
+        self.create_camera_switch(context)
 
     def draw_prepare(self, context):
         for i, gz in enumerate(self.gizmos):
+            gz.hide = True
+
+        region_3d = context.space_data.region_3d
+        view_perspective = region_3d.view_perspective
+
+        # if view_perspective == "PERSP":  # 透视
+        #     ...
+        # elif view_perspective == "ORTHO":  # 正交
+        #     ...
+        gizmos = self.gizmos
+        if view_perspective == "CAMERA":  # 相机
+            gizmos = [
+                self.gz_move,
+                self.gz_setttings,
+                self.gz_cam_switch,
+            ]
+        else:
+            gizmos = [
+                self.gz_add_cam,
+                self.gz_cam_pv,
+            ]
+
+        for i, gz in enumerate(gizmos):
             offset_2d_gizmo(context, gz, i)
+            gz.hide = False
+
         context.area.tag_redraw()
         self.refresh(context)
 

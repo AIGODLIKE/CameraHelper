@@ -1,12 +1,12 @@
 import bpy
 
 from .button_2d import Button2DGizmos
-from .preview_camera import PreviewCameraGizmos, PreviewCameraGizmo
+from .preview_camera import PreviewCameraGizmos, PreviewCameraAreaGizmo
 
 register_class, unregister_class = bpy.utils.register_classes_factory([
     Button2DGizmos,
 
-    PreviewCameraGizmo,
+    PreviewCameraAreaGizmo,
     PreviewCameraGizmos,
 ])
 
