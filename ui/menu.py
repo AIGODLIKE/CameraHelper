@@ -28,11 +28,25 @@ class CAMHP_MT_popup_cam_settings(bpy.types.Menu):
     bl_space_type = "VIEW_3D"
     bl_region_type = "WINDOW"
 
-    def draw(self, context_):
+    def draw(self, context):
         layout = self.layout
-        layout.popover(panel="CAMHP_PT_pop_cam_lens")
-        layout.popover(panel="CAMHP_PT_pop_cam_dof")
-        layout.popover(panel="CAMHP_PT_pop_cam_comp_panel", text="Guide")
+        camera_obj = context.space_data.camera
+        if camera_obj:
+            layout.context_pointer_set("camera", camera_obj.data)
+            layout.popover("DATA_PT_camera")
+            layout.popover("DATA_PT_lens")
+            layout.popover("DATA_PT_camera_display")
+
+            layout.separator()
+            if context.engine == "CYCLES":
+                layout.popover("CYCLES_CAMERA_PT_dof")
+            else:
+                layout.popover("DATA_PT_camera_dof")
+            layout.separator()
+            layout.popover("DATA_PT_camera_safe_areas")
+
+        else:
+            layout.label(text="No Camera Selected")
 
 
 def register():
