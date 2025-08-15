@@ -32,7 +32,7 @@ class AddCamera(bpy.types.Operator):
         context.scene.camera = cam
         context.view_layer.objects.active = cam
         try:
-            bpy.ops.view3d.camera_to_view()
+            bpy.ops.view3d.camera_to_view("INVOKE_DEFAULT")
         except:
             pass
 

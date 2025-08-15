@@ -54,7 +54,8 @@ class CameraThumbnails:
         area_hash = hash(get_area_max_parent(context.area))
         if area_hash not in data:
             cls.switch_preview(context, camera)
-
+            
+        data[area_hash]["enabled"] = True
         data[area_hash]["pin"] = data[area_hash]["pin"] ^ True
 
     @classmethod

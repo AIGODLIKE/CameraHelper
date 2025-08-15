@@ -1,6 +1,12 @@
+import bpy
 
+from ..old.draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
+from ..old.draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
+from ..old.draw_utils.bl_ui_label import BL_UI_Label
+from bpy.app.translations import pgettext_iface as tip_
+from ...utils.asset import AssetDir, get_asset_dir
 
-class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, Operator):
+class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, bpy.types.Operator):
     bl_idname = 'camhp.add_motion_cams'
     bl_label = 'Add Motion Camera'
     bl_options = {'UNDO_GROUPED', 'INTERNAL', 'BLOCKING', 'GRAB_CURSOR'}
