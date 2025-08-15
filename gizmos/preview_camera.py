@@ -6,7 +6,7 @@ from mathutils import Vector
 
 from .public_gizmo import PublicGizmo
 from ..debug import DEBUG_PREVIEW_CAMERA
-from ..ops.preview_camera import CameraThumbnails
+from ..camera_thumbnails import CameraThumbnails
 from ..utils.area import area_offset
 from ..utils.gpu import draw_box
 
@@ -44,7 +44,7 @@ class PreviewCameraAreaGizmo(bpy.types.Gizmo):
 
     def exit(self, context, cancel):
         if DEBUG_PREVIEW_CAMERA:
-            print("exit", context, cancel)
+            print("exit", cancel)
         if cancel:
             CameraThumbnails.get_camera_data(context.area)["offset"] = self.start_offset
         else:

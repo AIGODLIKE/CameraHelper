@@ -7,7 +7,7 @@ class SnapShot(bpy.types.Operator):
     bl_label = "Snap Shot"
 
     def execute(self, context):
-        from .preview_camera import CameraThumbnails
+        from ..camera_thumbnails import CameraThumbnails
         area = context.area
         if camera_data := CameraThumbnails.get_camera_data(area):
             if camera_name := camera_data.get("camera_name", None):
@@ -52,5 +52,4 @@ class SnapShot(bpy.types.Operator):
                 # # restore
                 # context.scene.render.resolution_x = ori_width
                 # context.scene.render.resolution_y = ori_height
-
         return {'FINISHED'}

@@ -1,7 +1,7 @@
 import bpy
 
 from .public_gizmo import PublicGizmo
-from ..ops.preview_camera import CameraThumbnails
+from ..camera_thumbnails import CameraThumbnails
 from ..utils.gizmo import offset_2d_gizmo
 
 
