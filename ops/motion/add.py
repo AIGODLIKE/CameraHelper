@@ -1,10 +1,45 @@
 import bpy
-
-from ..old.draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
-from ..old.draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
-from ..old.draw_utils.bl_ui_label import BL_UI_Label
 from bpy.app.translations import pgettext_iface as tip_
+from bpy_extras.view3d_utils import location_3d_to_region_2d
+
+from ..old.draw_utils.bl_ui_button import BL_UI_Button
+from ..old.draw_utils.bl_ui_drag_panel import BL_UI_Drag_Panel
+from ..old.draw_utils.bl_ui_draw_op import BL_UI_OT_draw_operator
+from ..old.draw_utils.bl_ui_label import BL_UI_Label
 from ...utils.asset import AssetDir, get_asset_dir
+
+
+def get_obj_2d_loc(obj, context):
+    r3d = context.space_data.region_3d
+    loc = location_3d_to_region_2d(context.region, r3d, obj.matrix_world.translation)
+    return loc
+
+
+def load_asset(name: str, asset_type: str, filepath: str) -> bpy.types.NodeTree | bpy.types.Object:
+    """load asset into current scene from giving asset type"""
+    if asset_type == 'objects':
+        attr = 'objects'
+    elif asset_type == 'node_groups':
+        attr = 'node_groups'
+    else:
+        raise ValueError('asset_type not support')
+
+    # reuse existing data
+    data_lib = getattr(bpy.data, attr)
+    if name in data_lib and asset_type in {'node_groups'}:
+        return data_lib[name]
+
+    with bpy.data.libraries.load(filepath, link=False) as (data_from, data_to):
+        src = getattr(data_from, attr)
+        res = [x for x in src if x == name]
+        if not res:
+            raise ValueError(f'No {name} found in {filepath}')
+        setattr(data_to, attr, res)
+    # clear asset mark
+    obj = getattr(data_to, attr)[0]
+    obj.asset_clear()
+    return obj
+
 
 class CAMHP_PT_add_motion_cams(BL_UI_OT_draw_operator, bpy.types.Operator):
     bl_idname = 'camhp.add_motion_cams'

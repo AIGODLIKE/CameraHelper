@@ -34,7 +34,7 @@ def save_texture_to_image(context, camera, texture):
                     break
     return key
 
-class SnapShot(bpy.types.Operator):
+class Snapshot(bpy.types.Operator):
     """Snap Shot"""
     bl_idname = "camhp.pv_snap_shot"
     bl_label = "Snapshot"
