@@ -69,16 +69,15 @@ class PreviewCameraAreaGizmo(bpy.types.Gizmo):
             border = 5
             draw_box(-border, w + border, -border, h + border, color)
 
-            if texture_data := CameraThumbnails.texture_data.get(data["camera_name"], None):
-                if texture := texture_data.get("texture", None):
-                    draw_texture_2d(texture, (0, 0), w, h)
+            if texture := CameraThumbnails.texture_data.get(data["camera_name"], None):
+                draw_texture_2d(texture, (0, 0), w, h)
             # DEBUG
             if DEBUG_PREVIEW_CAMERA:
                 blf.position(0, 0, 0, 1)
                 for text in (
                         f"Preview Camera {self.is_hover}",
                         hash(context.area),
-                        texture_data,
+                        texture,
                         f"{self.draw_points}",
                         str(data)
                 ):

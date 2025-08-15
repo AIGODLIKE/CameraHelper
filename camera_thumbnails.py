@@ -45,11 +45,7 @@ class CameraThumbnails:
     }
 
     texture_data = {
-        # camera_name:{
-        # texture:gpu.types.GPUTexture,
-        # matrix:bpy.types.Matrix,
-        # info: ...
-        # }
+        # camera_name:gpu.types.GPUTexture
     }
 
     @classmethod
@@ -67,7 +63,6 @@ class CameraThumbnails:
         area_hash = hash(get_area_max_parent(context.area))
         if area_hash in data:
             data[area_hash]["enabled"] = data[area_hash]["enabled"] ^ True
-            # data.pop(area_hash)
         else:
             data[area_hash] = {
                 "camera_name": camera.name,
@@ -108,24 +103,20 @@ class CameraThumbnails:
             print(f"update {time.time() - start_time}s\t", camera, update_completion_list)
 
     @classmethod
-    def update_camera_texture(cls, context, camera):
+    def update_camera_texture(cls, context, camera, use_resolution=False) -> gpu.types.GPUTexture:
         from .utils import get_camera_preview_size
 
         is_update = True
         scene = context.scene
         name = camera.name
 
-        w, h = get_camera_preview_size(context)
-        # camera_info = get_property(camera, exclude=("original",))
+        if use_resolution:
+            render = context.scene.render
+            w, h = render.resolution_x, render.resolution_y
+        else:
+            w, h = get_camera_preview_size(context)
 
-        # 在修改相机的时候更新纹理,会出现物体不同步,暂时关闭
-        # is_cache = name in cls.texture_data
-        # if is_cache:
-        #     if (camera_info == cls.texture_data[name]["info"] and
-        #             camera.matrix_world.copy() == cls.texture_data[name]["matrix"]
-        #     ):
-        #         is_update = False
-
+        texture = None
         if is_update:
             if name not in cls.camera_data:
                 offscreen = gpu.types.GPUOffScreen(w, h)
@@ -149,9 +140,8 @@ class CameraThumbnails:
             )
             if DEBUG_PREVIEW_CAMERA:
                 print("update_camera_texture", camera.name)
-            cls.texture_data[name] = {
-                "texture": offscreen.texture_color,
-            }
+            texture = cls.texture_data[name] = offscreen.texture_color
+        return texture
 
     @classmethod
     def check_is_draw(cls, context):
@@ -180,4 +170,4 @@ class CameraThumbnails:
     @classmethod
     def get_camera_data(cls, area):
         area_hash = hash(get_area_max_parent(area))
-        return CameraThumbnails.camera_data[area_hash]
+        return CameraThumbnails.camera_data.get(area_hash, None)

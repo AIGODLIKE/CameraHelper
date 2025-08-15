@@ -21,7 +21,7 @@ class PreviewCamera(bpy.types.Operator):
         CameraThumbnails.update()
         if event.type == "LEFTMOUSE":
             if event.shift and event.ctrl:
-                bpy.ops.camhp.pv_snap_shot()
+                bpy.ops.camhp.pv_snap_shot("INVOKE_DEFAULT")
             elif event.ctrl:
                 if camera:
                     CameraThumbnails.pin_selected_camera(context, camera)
