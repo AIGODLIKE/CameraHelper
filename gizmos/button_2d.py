@@ -90,6 +90,7 @@ class Button2DGizmos(bpy.types.GizmoGroup, Gizmos, PublicGizmo):
                 self.gz_move,
                 self.gz_setttings,
                 self.gz_cam_switch,
+                self.gz_cam_pv,
             ]
         else:
             gizmos = [

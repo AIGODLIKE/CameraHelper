@@ -32,18 +32,14 @@ def save_texture_to_image(context, camera, texture):
                 if space.type == 'IMAGE_EDITOR':
                     space.image = img
                     break
-
+    return key
 
 class SnapShot(bpy.types.Operator):
     """Snap Shot"""
     bl_idname = "camhp.pv_snap_shot"
-    bl_label = "Snap Shot"
-
-    def execute(self, context):
-        return {'FINISHED'}
+    bl_label = "Snapshot"
 
     def invoke(self, context, event):
-        print("invoke", context, event)
         from ..camera_thumbnails import CameraThumbnails
         area = context.area
         camera = None
@@ -64,7 +60,7 @@ class SnapShot(bpy.types.Operator):
             save_texture_to_image(context, camera, texture)
             space.overlay.show_overlays = ori_show_overlay
 
-            self.report({'INFO'}, f'Snap Shot')
+            self.report({'INFO'}, 'Snapshot')
             return {'FINISHED'}
         self.report({'ERROR'}, 'Not find camera')
         return {'CANCELLED'}

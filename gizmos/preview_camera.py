@@ -26,21 +26,21 @@ class PreviewCameraAreaGizmo(bpy.types.Gizmo):
         self.start_mouse = Vector((event.mouse_region_x, event.mouse_region_y))
         if DEBUG_PREVIEW_CAMERA:
             print("invoke")
-        return {'RUNNING_MODAL'}
+        return {"RUNNING_MODAL"}
 
     def modal(self, context, event, tweak):
         if DEBUG_PREVIEW_CAMERA:
-            print("", event.type, event.value, CameraThumbnails.get_camera_data(context.area))
+            print(self.bl_idname, "modal", event.type, event.value, CameraThumbnails.get_camera_data(context.area))
         if event.type == "LEFTMOUSE":
             return {"FINISHED"}
-        elif event.type in {'RIGHTMOUSE', 'ESC'}:
-            return {'CANCELLED'}
+        elif event.type in {"RIGHTMOUSE", "ESC"}:
+            return {"CANCELLED"}
         mouse = Vector((event.mouse_region_x, event.mouse_region_y))
         diff = self.start_mouse - mouse
         self.offset_after = offset = self.start_offset + Vector((-diff.x, diff.y))
         CameraThumbnails.get_camera_data(context.area)["offset"] = offset
         context.area.tag_redraw()
-        return {'RUNNING_MODAL'}
+        return {"RUNNING_MODAL"}
 
     def exit(self, context, cancel):
         if DEBUG_PREVIEW_CAMERA:

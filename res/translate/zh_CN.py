@@ -20,4 +20,6 @@ data = {
     "Camera Thumbnails\nLeft Click: Enable\nCtrl: Pin Selected Camera\nCtrl Shift Click: Send to Viewer": "相机缩略图\n左键点击: 启用\nCtrl: 固定选中相机\nCtrl Shift 左键：生成缩略图",
     "Camera Helper": "相机助手",
     "Camera Settings": "相机设置",
+    "Snapshot": "快照",
+    "Not find camera": "未找到相机",
 }
