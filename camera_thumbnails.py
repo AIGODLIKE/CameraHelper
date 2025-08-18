@@ -54,7 +54,7 @@ class CameraThumbnails:
         area_hash = hash(get_area_max_parent(context.area))
         if area_hash not in data:
             cls.switch_preview(context, camera)
-            
+
         data[area_hash]["enabled"] = True
         data[area_hash]["pin"] = data[area_hash]["pin"] ^ True
 
@@ -81,17 +81,19 @@ class CameraThumbnails:
 
         if camera is not None:
             for key, value in cls.camera_data.items():  # 切换预览相机
-                if value["camera_name"] != camera.name:
-                    if value.get("pin", False) is False:
-                        value["camera_name"] = camera.name
-                        cls.camera_data[key] = value
-                    else:
-                        if pin_camera := context.scene.objects.get(value["camera_name"], None):
-                            camera = pin_camera
+                pin = value.get("pin", False)
+
+                if DEBUG_PREVIEW_CAMERA:
+                    print("pin\t", pin, "\t", value["camera_name"], key, value, )
+                if pin is False:
+                    value["camera_name"] = camera.name
+                    cls.camera_data[key] = value
 
         update_completion_list = []
         with camera_context(context) as is_update:
             if is_update:
+                if DEBUG_PREVIEW_CAMERA:
+                    print(is_update, "cls.camera_data")
                 for camera_data in cls.camera_data.values():  # 更新相机纹理
                     camera_name = camera_data["camera_name"]
                     camera = context.scene.objects.get(camera_name, None)
@@ -101,7 +103,8 @@ class CameraThumbnails:
                         update_completion_list.append(camera_name)
 
         if DEBUG_PREVIEW_CAMERA:
-            print(f"update {time.time() - start_time}s\t", camera, update_completion_list)
+            print(f"update {time.time() - start_time}s\t", update_completion_list)
+            print("\n")
 
     @classmethod
     def update_camera_texture(cls, context, camera, use_resolution=False) -> gpu.types.GPUTexture:
