@@ -57,20 +57,25 @@ class CameraThumbnails:
 
         data[area_hash]["enabled"] = True
         data[area_hash]["pin"] = data[area_hash]["pin"] ^ True
+        cls.update()
 
     @classmethod
     def switch_preview(cls, context, camera: bpy.types.Camera):
         data = cls.camera_data
+
         area_hash = hash(get_area_max_parent(context.area))
+        camera_name = "camera_name" if camera is None else camera.name
+
         if area_hash in data:
             data[area_hash]["enabled"] = data[area_hash]["enabled"] ^ True
         else:
             data[area_hash] = {
-                "camera_name": camera.name,
+                "camera_name": camera_name,
                 "offset": Vector((0, 0)),
                 "pin": False,
                 "enabled": True,
             }
+        cls.update()
 
     @classmethod
     def update(cls):
@@ -98,7 +103,8 @@ class CameraThumbnails:
                     camera_name = camera_data["camera_name"]
                     camera = context.scene.objects.get(camera_name, None)
                     enabled = camera_data.get("enabled", False)
-                    if camera and enabled and camera_name not in update_completion_list:
+                    repetition_detection = camera_name not in update_completion_list
+                    if camera and enabled and repetition_detection:
                         cls.update_camera_texture(context, camera)
                         update_completion_list.append(camera_name)
 

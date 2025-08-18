@@ -22,4 +22,5 @@ data = {
     "Camera Settings": "相机设置",
     "Snapshot": "快照",
     "Not find camera": "未找到相机",
+    "Please select a camera":"请选择一个相机"
 }

@@ -18,16 +18,16 @@ class PreviewCamera(bpy.types.Operator):
 
     def invoke(self, context, event):
         camera = get_camera(context)
-        CameraThumbnails.update()
-        if event.type == "LEFTMOUSE":
-            if event.shift and event.ctrl:
-                bpy.ops.camhp.pv_snap_shot("INVOKE_DEFAULT")
-            elif event.ctrl:
-                if camera:
-                    CameraThumbnails.pin_selected_camera(context, camera)
-            else:
-                if camera:
-                    CameraThumbnails.switch_preview(context, camera)
-        CameraThumbnails.update()
+        if camera is None and not CameraThumbnails.check_is_draw(context):
+            self.report({'ERROR'}, "Please select a camera")
+            return {'CANCELLED'}
+
+        print("camera", camera)
+        if event.shift and event.ctrl:
+            bpy.ops.camhp.pv_snap_shot("INVOKE_DEFAULT")
+        elif event.ctrl:
+            CameraThumbnails.pin_selected_camera(context, camera)
+        else:
+            CameraThumbnails.switch_preview(context, camera)
         context.area.tag_redraw()
         return {"FINISHED"}
