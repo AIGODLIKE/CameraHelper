@@ -20,16 +20,19 @@ def camera_context(context):
                     if region.type == "WINDOW":
                         for space in area.spaces:
                             if space.type == "VIEW_3D":
-                                with context.temp_override(
-                                        area=area,
-                                        region=region,
-                                        space_data=space,
-                                ):
-                                    ori_show_overlay = space.overlay.show_overlays
-                                    space.overlay.show_overlays = False
-                                    yield True
-                                    space.overlay.show_overlays = ori_show_overlay
-                                    return
+                                try:
+                                    with context.temp_override(
+                                            area=area,
+                                            region=region,
+                                            space_data=space,
+                                    ):
+                                        ori_show_overlay = space.overlay.show_overlays
+                                        space.overlay.show_overlays = False
+                                        yield True
+                                        space.overlay.show_overlays = ori_show_overlay
+                                        return
+                                except TypeError:
+                                    ...
     yield False
 
 
