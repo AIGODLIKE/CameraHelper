@@ -13,22 +13,23 @@ from .utils.area import get_area_max_parent
 @contextmanager
 def camera_context(context):
     """Tips: 打开了渲染窗口会出现screen不匹配无法刷新"""
-    for area in context.screen.areas:
-        if area.type == "VIEW_3D":
-            for region in area.regions:
-                if region.type == "WINDOW":
-                    for space in area.spaces:
-                        if space.type == "VIEW_3D":
-                            with context.temp_override(
-                                    area=area,
-                                    region=region,
-                                    space_data=space,
-                            ):
-                                ori_show_overlay = space.overlay.show_overlays
-                                space.overlay.show_overlays = False
-                                yield True
-                                space.overlay.show_overlays = ori_show_overlay
-                                return
+    if context.screen:
+        for area in context.screen.areas:
+            if area.type == "VIEW_3D":
+                for region in area.regions:
+                    if region.type == "WINDOW":
+                        for space in area.spaces:
+                            if space.type == "VIEW_3D":
+                                with context.temp_override(
+                                        area=area,
+                                        region=region,
+                                        space_data=space,
+                                ):
+                                    ori_show_overlay = space.overlay.show_overlays
+                                    space.overlay.show_overlays = False
+                                    yield True
+                                    space.overlay.show_overlays = ori_show_overlay
+                                    return
     yield False
 
 
