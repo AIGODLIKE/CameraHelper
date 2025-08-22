@@ -115,7 +115,7 @@ class AdjustCameraLens(bpy.types.Operator):
 
         correctionOffset = self.startLocalCursorZ * (1.0 - scale)
 
-        # self.camera.offsetLocation(Vector((0.0, 0.0, correctionOffset)))
+        self.camera.offsetLocation(Vector((0.0, 0.0, correctionOffset)))
 
     def modal(self, context, event):
         self.mouse_pos = event.mouse_region_x, event.mouse_region_y
