@@ -179,6 +179,8 @@ class CameraThumb:
             ori_show_overlay = context.space_data.overlay.show_overlays
             context.space_data.overlay.show_overlays = show_overlay
 
+            # color management, if version is >= 5.0.0, the screen color space will be linear by default
+            do_color_management = (bpy.app.version >= (5, 0, 0))
             self.offscreen.draw_view3d(
                 scene,
                 context.view_layer,
@@ -186,7 +188,7 @@ class CameraThumb:
                 context.region,
                 view_matrix,
                 projection_matrix,
-                do_color_management=False)
+                do_color_management=do_color_management)
             gpu.state.depth_mask_set(False)
             context.space_data.overlay.show_overlays = ori_show_overlay
             start = get_start_point(self.width + self.border_width, self.height + self.border_width)
