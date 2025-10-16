@@ -131,6 +131,7 @@ class CameraThumbnails:
             w, h = get_camera_preview_size(context)
 
         texture = None
+        do_color_management = (bpy.app.version >= (5, 0, 0))
         if is_update:
             if name not in cls.camera_data:
                 offscreen = gpu.types.GPUOffScreen(w, h)
@@ -149,7 +150,7 @@ class CameraThumbnails:
                 context.region,
                 view_matrix,
                 projection_matrix,
-                do_color_management=False,
+                do_color_management=do_color_management,
                 draw_background=True,
             )
             if DEBUG_PREVIEW_CAMERA:
