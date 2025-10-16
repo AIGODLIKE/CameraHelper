@@ -1,13 +1,25 @@
-from . import op_cam, op_motion_cam, handle_draw
+import bpy
+
+from .add_camera import AddCamera
+from .adjust_camera_lens import AdjustCameraLens
+from .preview_camera import PreviewCamera
+from .snapshot import Snapshot
+from .switch_camera import SwitchCamera
+from . import motion
+register_class, unregister_class = bpy.utils.register_classes_factory((
+    AddCamera,
+    PreviewCamera,
+    AdjustCameraLens,
+
+    Snapshot,
+    SwitchCamera,
+))
 
 
 def register():
-    op_cam.register()
-    op_motion_cam.register()
-    handle_draw.register()
-
+    register_class()
+    motion.register()
 
 def unregister():
-    handle_draw.unregister()
-    op_cam.unregister()
-    op_motion_cam.unregister()
+    unregister_class()
+    motion.unregister()
